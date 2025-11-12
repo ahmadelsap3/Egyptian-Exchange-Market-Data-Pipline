@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage
+dist/
+build/
+
+# Environments & secrets
+.env
+.env.*
+!.env.example
+
+# dbt
+target/
+dbt_packages/
+
+# Airflow
+airflow/**/logs/
+airflow/airflow.db
+airflow/airflow-webserver.pid
+
+# Spark
+*.crc
+spark-warehouse/
+
+# Docker
+*.pid
+
+# OS/IDE
+.DS_Store
+.vscode/
+.idea/
