@@ -25,7 +25,7 @@ fi
 
 # 1) Create or update policy document with the bucket name substituted into a temp file
 TMP_POLICY_JSON="/tmp/${POLICY_FILE}.${BUCKET}"
-sed "s|\$\{BUCKET_NAME\}|${BUCKET}|g" "$(dirname "$0")/${POLICY_FILE}" > "$TMP_POLICY_JSON"
+sed "s/\${BUCKET_NAME}/${BUCKET}/g" "$(dirname "$0")/${POLICY_FILE}" > "$TMP_POLICY_JSON"
 
 # 2) Create policy (if not exists) or get existing ARN
 EXISTING_POLICY_ARN=$(aws iam list-policies --scope Local --query "Policies[?PolicyName=='${POLICY_NAME}'].Arn | [0]" --output text || true)

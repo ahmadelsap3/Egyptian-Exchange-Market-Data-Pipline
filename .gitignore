@@ -18,6 +18,9 @@ build/
 .env.*
 !.env.example
 .venv/
+.venv-aws/
+TEAM_CREDENTIALS.txt
+*.credentials.txt
 
 # dbt
 target/
