@@ -10,6 +10,11 @@ import pandas as pd
 from datetime import datetime
 import json
 import os
+import boto3
+
+bucketName = 'egx-data-bucket'
+s3 = boto3.client('s3')
+
 
 while True:
 
@@ -96,6 +101,10 @@ while True:
 
     # Save the CSV
     DF.to_csv(file_path, index=False)
+    #upload to s3
+    s3_prefix = f'batch/tradingview/{folder_name}/'
+    s3_key = os.path.join(s3_prefix, filename).replace("\\", "/")
+    s3.upload_file(file_path,bucketName,s3_key )
     snitch.close()
 
     time.sleep(60)
