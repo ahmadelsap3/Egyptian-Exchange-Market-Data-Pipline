@@ -2,19 +2,12 @@
   "Version": "2012-10-17",
   "Statement": [
     {
-      "Sid": "AllowListBucketPrefixes",
+      "Sid": "AllowFullS3Access",
       "Effect": "Allow",
-      "Action": ["s3:ListBucket"],
-      "Resource": ["arn:aws:s3:::${BUCKET_NAME}"],
-      "Condition": {"StringLike": {"s3:prefix": ["streaming/*", "batch/*"]}}
-    },
-    {
-      "Sid": "AllowPutObjects",
-      "Effect": "Allow",
-      "Action": ["s3:PutObject", "s3:PutObjectAcl"],
+      "Action": ["s3:*"],
       "Resource": [
-        "arn:aws:s3:::${BUCKET_NAME}/streaming/*",
-        "arn:aws:s3:::${BUCKET_NAME}/batch/*"
+        "arn:aws:s3:::${BUCKET_NAME}",
+        "arn:aws:s3:::${BUCKET_NAME}/*"
       ]
     }
   ]
