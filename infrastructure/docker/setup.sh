@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Quick setup script for the real-time streaming pipeline
-# Run this after cloning the repo
+# Run this from infrastructure/docker directory
 
 set -e
 
@@ -16,10 +16,14 @@ fi
 echo "✅ Docker is running"
 echo ""
 
+# Get script directory and project root
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+
 # Start services
-echo "📦 Starting services (Kafka, Zookeeper, InfluxDB, Grafana, MinIO)..."
-cd "$(dirname "$0")/../../infrastructure/docker"
-docker compose -f docker-compose.dev.yml up -d
+echo "📦 Starting services (Kafka, Zookeeper, InfluxDB, Grafana, MinIO, Airflow, Spark, Jupyter)..."
+cd "$SCRIPT_DIR"
+docker compose up -d
 
 echo ""
 echo "⏳ Waiting 20 seconds for services to initialize..."
@@ -28,10 +32,10 @@ sleep 20
 # Check services
 echo ""
 echo "✅ Services status:"
-docker compose -f docker-compose.dev.yml ps
+docker compose ps
 
-# Go back to project root
-cd "$(dirname "$0")/../.."
+# Go to project root
+cd "$PROJECT_ROOT"
 
 # Check if venv exists
 if [ ! -d ".venv" ]; then
@@ -69,11 +73,14 @@ echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo "📊 Available Services:"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "  Grafana:    http://localhost:3000  (admin / admin)"
-echo "  InfluxDB:   http://localhost:8086  (admin / admin123456)"
-echo "  Kafka UI:   http://localhost:8080"
-echo "  MinIO:      http://localhost:9001  (minioadmin / minioadmin)"
+echo "  Grafana:      http://localhost:3000  (admin / admin)"
+echo "  InfluxDB:     http://localhost:8086  (admin / admin123456)"
+echo "  Airflow:      http://localhost:8081  (admin / admin)"
+echo "  Jupyter:      http://localhost:8888  (token: admin)"
+echo "  Spark UI:     http://localhost:8080"
+echo "  Kafka UI:     http://localhost:8082"
+echo "  MinIO:        http://localhost:9001  (minioadmin / minioadmin)"
 echo ""
 echo "To stop services:"
-echo "  cd infrastructure/docker && docker compose -f docker-compose.dev.yml down"
+echo "  cd infrastructure/docker && docker compose down"
 echo ""
