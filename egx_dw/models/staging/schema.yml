@@ -1,18 +1,41 @@
 version: 2
 
 models:
-  - name: stg_stock_prices
-    description: "Staging table for raw stock price data from InfluxDB/Bronze layer"
+  - name: stg_egx30 
+    description: "البيانات النظيفة والموحدة لأسعار الأسهم اليومية (EGX30)"
+    
+    # 1. الاختبارات على مستوى الموديل (اللي نجحت)
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          combination_of_columns:
+            - stock_symbol
+            - trade_date
+            
+    # 2. تعريف الأعمدة والاختبارات الفردية
     columns:
-      - name: symbol
-        description: "Stock symbol (e.g., COMI, ETEL)"
+      
+      - name: stock_symbol
+        description: "رمز السهم"
         tests:
-          - not_null
-      - name: timestamp
-        description: "Trading timestamp"
+          - not_null       
+      
+      - name: trade_date
+        description: "تاريخ التداول"
         tests:
-          - not_null
-      - name: close_price
-        description: "Closing price"
+          - not_null       
+
+      - name: closing_price
+        description: "سعر الإغلاق اليومي"
+        tests:
+          # استخدام accepted_range: (لازم تكون القيمة > 0)
+          - dbt_utils.accepted_range:
+              min_value: 0.0001 # أقل قيمة ممكنة هي قيمة موجبة جداً
+              inclusive: true # القيمة دي مسموح بيها
+          
       - name: volume
-        description: "Trading volume"
+        description: "حجم التداول اليومي"
+        tests:
+          # استخدام accepted_range: (لازم تكون القيمة >= 0)
+          - dbt_utils.accepted_range:
+              min_value: 0
+              inclusive: true # القيمة صفر مسموح بيها في حجم التداول

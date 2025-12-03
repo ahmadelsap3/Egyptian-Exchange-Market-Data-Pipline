@@ -5,7 +5,7 @@
 name: 'egx_dw'
 version: '1.0.0'
 
-# This setting configures which "profile" dbt uses for this project.
+#  This setting configures which "profile" dbt uses for this project.
 profile: 'egx_dw'
 
 # These configurations specify where dbt should look for different types of files.
@@ -56,3 +56,4 @@ vars:
 seeds:
   egx_dw:
     +schema: seeds
+
