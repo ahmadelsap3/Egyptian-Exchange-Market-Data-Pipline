@@ -90,33 +90,24 @@ python extract/realtime/consumer_influxdb.py \
   --topic egx_market_data --bootstrap localhost:9093
 ```
 
-**Run batch consumer (local):**
-```bash
-python extract/streaming/consumer_kafka.py \
-  --topic egx_market_data --bucket egx-data-bucket --minio-endpoint http://localhost:9000
-```
-
 **Run batch consumer (AWS):**
 ```bash
 export AWS_ACCESS_KEY_ID=... AWS_SECRET_ACCESS_KEY=... AWS_REGION=us-east-1
 python extract/streaming/consumer_kafka.py \
-  --topic egx_market_data --bucket egx-data-bucket --use-aws
+  --topic egx_market_data --bucket egx-data-bucket
 ```
 
 ## Verification
 
-**MinIO Console:** http://localhost:9001 (minioadmin/minioadmin)
 **Grafana Dashboard:** http://localhost:3000 (admin/admin)
+**AWS S3 Console:** Check your bucket for partitioned data
 
 ## Environment Variables
 
 | Variable | Description | Default |
-|----------|-------------|---------|
+|----------|-------------|---------|  
 | `KAFKA_BOOTSTRAP_SERVERS` | Kafka broker | `localhost:9092` |
-| `AWS_ACCESS_KEY_ID` | S3/MinIO key | `minioadmin` |
-| `AWS_SECRET_ACCESS_KEY` | S3/MinIO secret | `minioadmin` |
-| `AWS_REGION` | AWS region | `us-east-1` |
-| `MINIO_ENDPOINT` | MinIO URL | `http://localhost:9000` |
-
----
+| `AWS_ACCESS_KEY_ID` | S3 access key | (required) |
+| `AWS_SECRET_ACCESS_KEY` | S3 secret key | (required) |
+| `AWS_REGION` | AWS region | `us-east-1` |---
 *Updated: December 2025*

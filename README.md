@@ -66,7 +66,7 @@ egx_dw/                  # dbt project
 └── tests/               # Data quality tests
 
 sql/                     # Snowflake setup scripts
-infrastructure/docker/   # Kafka, InfluxDB, Grafana, MinIO
+infrastructure/docker/   # Kafka, InfluxDB, Grafana
 iam/                     # AWS IAM for S3 access
 docs/                    # Technical documentation
 ```
@@ -106,8 +106,8 @@ docs/                    # Technical documentation
 ## Local Services
 
 - Grafana: http://localhost:3000 (admin/admin)
-- MinIO: http://localhost:9001 (minioadmin/minioadmin)
-- Kafka UI: http://localhost:8080
+- Kafka UI: http://localhost:8082
+- InfluxDB: http://localhost:8086 (admin/admin123456)
 - Snowflake: See `docs/UPLOAD_TO_S3.md` for credentials
 
 ## Tech Stack
