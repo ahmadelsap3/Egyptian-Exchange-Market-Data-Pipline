@@ -13,7 +13,7 @@ services:
         volumes:
             - postgres_data:/var/lib/postgresql/data
         ports:
-            - "5432:5432"
+            - "5433:5432"
         healthcheck:
             test:
                 [
@@ -28,7 +28,9 @@ services:
             - de-network
 
     airflow-init:
-        image: apache/airflow:2.9.0-python3.10
+        build:
+            context: .
+            dockerfile: Dockerfile
         container_name: airflow-init
         environment:
             AIRFLOW__CORE__EXECUTOR: LocalExecutor
@@ -39,7 +41,6 @@ services:
             AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
             AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
             AWS_DEFAULT_REGION: ${AWS_REGION:-us-east-1}
-            _PIP_ADDITIONAL_REQUIREMENTS: "egxpy kafka-python boto3 apache-airflow-providers-apache-kafka apache-airflow-providers-amazon influxdb-client"
         volumes:
             - ../../airflow/dags:/opt/airflow/dags
             - ../../airflow/logs:/opt/airflow/logs
@@ -58,7 +59,9 @@ services:
                 condition: service_healthy
 
     airflow:
-        image: apache/airflow:2.9.0-python3.10
+        build:
+            context: .
+            dockerfile: Dockerfile
         container_name: airflow
         environment:
             AIRFLOW__CORE__EXECUTOR: LocalExecutor
@@ -71,7 +74,6 @@ services:
             AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
             AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
             AWS_DEFAULT_REGION: ${AWS_REGION:-us-east-1}
-            _PIP_ADDITIONAL_REQUIREMENTS: "egxpy kafka-python boto3 apache-airflow-providers-apache-kafka apache-airflow-providers-amazon influxdb-client"
         volumes:
             - ../../airflow/dags:/opt/airflow/dags
             - ../../airflow/logs:/opt/airflow/logs
@@ -93,7 +95,9 @@ services:
                 condition: service_completed_successfully
 
     airflow-scheduler:
-        image: apache/airflow:2.9.0-python3.10
+        build:
+            context: .
+            dockerfile: Dockerfile
         container_name: airflow-scheduler
         environment:
             AIRFLOW__CORE__EXECUTOR: LocalExecutor
@@ -104,7 +108,6 @@ services:
             AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
             AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
             AWS_DEFAULT_REGION: ${AWS_REGION:-us-east-1}
-            _PIP_ADDITIONAL_REQUIREMENTS: "egxpy kafka-python boto3 apache-airflow-providers-apache-kafka apache-airflow-providers-amazon influxdb-client"
         volumes:
             - ../../airflow/dags:/opt/airflow/dags
             - ../../airflow/logs:/opt/airflow/logs
