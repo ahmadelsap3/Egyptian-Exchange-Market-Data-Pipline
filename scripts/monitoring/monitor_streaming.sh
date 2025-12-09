@@ -63,7 +63,7 @@ echo ""
 
 # Check 2: Producer process
 echo "2. Checking Kafka producer..."
-PRODUCER_PID=$(ps aux | grep producer_kafka.py | grep -v grep | awk '{print $2}')
+PRODUCER_PID=$(ps aux | grep "streaming/producer.py" | grep -v grep | awk '{print $2}')
 
 if [ -n "$PRODUCER_PID" ]; then
     echo -e "${GREEN}✓${NC} Producer running (PID: $PRODUCER_PID)"
