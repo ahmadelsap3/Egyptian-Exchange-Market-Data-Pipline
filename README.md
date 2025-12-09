@@ -285,10 +285,22 @@ dbt test --select <failing_model>
 
 ## 📊 Dashboards & Visualization
 
-### Grafana
+### Grafana Cloud (Recommended) ⭐
+- **Integration**: Connect to Snowflake for free!
+- **Setup Guide**: [grafana/README.md](grafana/README.md)
+- **Ready-to-use Queries**: [grafana/snowflake_queries.sql](grafana/snowflake_queries.sql)
+- **Security Setup**: [grafana/create_grafana_user.sql](grafana/create_grafana_user.sql)
+
+**Quick Start:**
+1. Install Snowflake plugin in Grafana Cloud
+2. Run `grafana/create_grafana_user.sql` in Snowflake
+3. Connect using GRAFANA_USER credentials
+4. Copy queries from `grafana/snowflake_queries.sql`
+
+### Local Grafana (Optional)
 - **URL**: http://localhost:3000
 - **Credentials**: admin / admin
-- **Data Source**: Snowflake (connect via JDBC)
+- **Data Source**: InfluxDB (for real-time metrics)
 
 ### Looker Studio / BI Tools
 Connect to Snowflake DWH_GOLD schema:
