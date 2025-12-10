@@ -92,7 +92,7 @@ class RedisTimescaleDBHandler:
             LOG.info(f"✓ Connected to Redis at {REDIS_HOST}:{REDIS_PORT}")
         except redis.ConnectionError as e:
             LOG.error(f"✗ Failed to connect to Redis: {e}")
-            sys.exit(1)
+            raise ConnectionError(f"Failed to connect to Redis at {REDIS_HOST}:{REDIS_PORT}") from e
     
     def _connect_postgres(self):
         """Connect to PostgreSQL/TimescaleDB."""
@@ -108,7 +108,7 @@ class RedisTimescaleDBHandler:
             LOG.info(f"✓ Connected to PostgreSQL at {POSTGRES_HOST}:{POSTGRES_PORT}/{POSTGRES_DB}")
         except psycopg2.Error as e:
             LOG.error(f"✗ Failed to connect to PostgreSQL: {e}")
-            sys.exit(1)
+            raise ConnectionError(f"Failed to connect to PostgreSQL at {POSTGRES_HOST}:{POSTGRES_PORT}") from e
     
     def setup_database(self):
         """
@@ -252,9 +252,15 @@ class RedisTimescaleDBHandler:
             
             # Restore ticks to Redis in reverse order to maintain chronological order
             # Since we read from left (oldest first), we push back to left to maintain order
-            for tick in reversed(ticks):
-                self.redis_client.lpush(REDIS_LIST_KEY, json.dumps(tick))
-            LOG.info(f"Restored {len(ticks)} ticks back to Redis buffer")
+            try:
+                for tick in reversed(ticks):
+                    self.redis_client.lpush(REDIS_LIST_KEY, json.dumps(tick))
+                LOG.info(f"Restored {len(ticks)} ticks back to Redis buffer")
+            except redis.RedisError as redis_err:
+                LOG.critical(f"✗ Failed to restore ticks to Redis: {redis_err}")
+                LOG.critical(f"Data loss alert: {len(ticks)} ticks could not be restored")
+                # Log the lost ticks for potential recovery
+                LOG.critical(f"Lost ticks: {json.dumps(ticks)}")
             
             raise
         finally:
@@ -262,13 +268,18 @@ class RedisTimescaleDBHandler:
         
         return records_inserted
     
-    def get_buffer_size(self) -> int:
-        """Get the current number of ticks in the Redis buffer."""
+    def get_buffer_size(self) -> Optional[int]:
+        """
+        Get the current number of ticks in the Redis buffer.
+        
+        Returns:
+            Number of ticks in buffer, or None if Redis error occurs
+        """
         try:
             return self.redis_client.llen(REDIS_LIST_KEY)
         except redis.RedisError as e:
             LOG.error(f"Failed to get buffer size: {e}")
-            return -1
+            return None
     
     def close(self):
         """Close Redis and PostgreSQL connections."""
@@ -297,9 +308,11 @@ def run_daemon(flush_interval: int = 60):
         while True:
             buffer_size = handler.get_buffer_size()
             
-            if buffer_size > 0:
+            if buffer_size is not None and buffer_size > 0:
                 LOG.info(f"Buffer size: {buffer_size} ticks")
                 handler.flush_to_db()
+            elif buffer_size is None:
+                LOG.error("Failed to get buffer size from Redis")
             else:
                 LOG.debug("Buffer is empty, waiting...")
             
@@ -310,7 +323,7 @@ def run_daemon(flush_interval: int = 60):
     finally:
         # Final flush before exit
         buffer_size = handler.get_buffer_size()
-        if buffer_size > 0:
+        if buffer_size is not None and buffer_size > 0:
             LOG.info("Performing final flush...")
             handler.flush_to_db()
         
@@ -374,35 +387,47 @@ def main():
     logging.getLogger().setLevel(getattr(logging, args.log_level))
     
     # Handle commands
-    if args.setup_db:
-        handler = RedisTimescaleDBHandler()
-        handler.setup_database()
-        handler.close()
+    try:
+        if args.setup_db:
+            handler = RedisTimescaleDBHandler()
+            handler.setup_database()
+            handler.close()
+        
+        elif args.buffer_tick:
+            symbol, price, volume = args.buffer_tick
+            handler = RedisTimescaleDBHandler()
+            handler.buffer_tick(symbol, float(price), int(volume))
+            buffer_size = handler.get_buffer_size()
+            LOG.info(f"✓ Tick buffered. Current buffer size: {buffer_size}")
+            handler.close()
+        
+        elif args.flush:
+            handler = RedisTimescaleDBHandler()
+            handler.flush_to_db()
+            handler.close()
+        
+        elif args.daemon:
+            run_daemon(args.flush_interval)
+        
+        elif args.buffer_size:
+            handler = RedisTimescaleDBHandler()
+            buffer_size = handler.get_buffer_size()
+            LOG.info(f"Current buffer size: {buffer_size} ticks")
+            handler.close()
+        
+        else:
+            parser.print_help()
     
-    elif args.buffer_tick:
-        symbol, price, volume = args.buffer_tick
-        handler = RedisTimescaleDBHandler()
-        handler.buffer_tick(symbol, float(price), int(volume))
-        buffer_size = handler.get_buffer_size()
-        LOG.info(f"✓ Tick buffered. Current buffer size: {buffer_size}")
-        handler.close()
-    
-    elif args.flush:
-        handler = RedisTimescaleDBHandler()
-        handler.flush_to_db()
-        handler.close()
-    
-    elif args.daemon:
-        run_daemon(args.flush_interval)
-    
-    elif args.buffer_size:
-        handler = RedisTimescaleDBHandler()
-        buffer_size = handler.get_buffer_size()
-        LOG.info(f"Current buffer size: {buffer_size} ticks")
-        handler.close()
-    
-    else:
-        parser.print_help()
+    except ConnectionError as e:
+        LOG.error(f"Connection failed: {e}")
+        LOG.error("Please ensure Redis and PostgreSQL/TimescaleDB are running")
+        sys.exit(1)
+    except KeyboardInterrupt:
+        LOG.info("Interrupted by user")
+        sys.exit(0)
+    except Exception as e:
+        LOG.error(f"Unexpected error: {e}")
+        sys.exit(1)
 
 
 if __name__ == '__main__':
