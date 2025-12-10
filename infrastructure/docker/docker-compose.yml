@@ -267,7 +267,7 @@ services:
             dockerfile: Dockerfile
         container_name: producer
         restart: unless-stopped
-        command: python producer.py --symbols "COMI,ETEL,SWDY,CIEB,EKHO,OCDI,ESRS,SKPC,ORWE,MNHD,HELI,TELE,FWRY,JUFO,SHRQ,CLHO,TMGH,EAST,HRHO,PHDC,EMFD,EFIH,PHAR,ORHD,KABO,AMER" --interval Daily --n-bars 100 --poll-interval 180 --bootstrap-servers docker-kafka-1:9093
+        command: python producer.py --symbols "COMI,ETEL,SWDY,CIEB,EKHO,OCDI,ESRS,SKPC,ORWE,MNHD,HELI,TELE,FWRY,JUFO,SHRQ,CLHO,TMGH,EAST,HRHO,PHDC,EMFD,EFIH,PHAR,ORHD,KABO,AMER,EGX30,EGX30CAPPED,EGX70EWI,EGX100EWI" --interval Daily --n-bars 1250 --poll-interval 180 --bootstrap-servers docker-kafka-1:9093
         depends_on:
             kafka:
                 condition: service_healthy

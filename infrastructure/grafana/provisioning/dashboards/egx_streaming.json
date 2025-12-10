@@ -8,110 +8,77 @@
     {
       "id": 1,
       "type": "stat",
-      "title": "Market Overview",
-      "gridPos": {"h": 4, "w": 24, "x": 0, "y": 0},
+      "title": "📊 Market Indices",
+      "gridPos": {"h": 6, "w": 8, "x": 0, "y": 0},
       "datasource": {"type": "influxdb", "uid": "P3C6603E967DC8568"},
       "targets": [{
         "refId": "A",
-        "query": "from(bucket: \"market_data\")\n  |> range(start: -24h)\n  |> filter(fn: (r) => r._measurement == \"stock_price\")\n  |> filter(fn: (r) => r._field == \"close\")\n  |> group(columns: [\"symbol\"])\n  |> last()\n  |> group()"
+        "query": "from(bucket: \"market_data\")\n  |> range(start: -24h)\n  |> filter(fn: (r) => r._measurement == \"stock_price\")\n  |> filter(fn: (r) => r._field == \"close\")\n  |> filter(fn: (r) => r.symbol == \"EGX30\" or r.symbol == \"EGX30CAPPED\" or r.symbol == \"EGX70EWI\" or r.symbol == \"EGX100EWI\")\n  |> group(columns: [\"symbol\"])\n  |> last()\n  |> keep(columns: [\"_time\", \"_value\", \"symbol\"])\n  |> group()\n  |> map(fn: (r) => ({r with _field: r.symbol}))\n  |> drop(columns: [\"symbol\"])"
       }],
       "options": {
         "orientation": "horizontal",
         "textMode": "value_and_name",
         "colorMode": "background",
-        "graphMode": "none",
+        "graphMode": "area",
         "justifyMode": "center"
       },
       "fieldConfig": {
         "defaults": {
-          "unit": "currencyEGP",
+          "unit": "locale",
+          "custom": {"suffix": " EGP"},
           "decimals": 2,
+          "displayName": "${__field.labels.symbol}",
           "thresholds": {
             "mode": "absolute",
             "steps": [
-              {"value": null, "color": "dark-green"},
-              {"value": 50, "color": "green"},
-              {"value": 100, "color": "yellow"}
+              {"value": null, "color": "blue"},
+              {"value": 10000, "color": "green"},
+              {"value": 30000, "color": "yellow"},
+              {"value": 50000, "color": "orange"}
             ]
           }
-        }
+        },
+        "overrides": [
+          {
+            "matcher": {"id": "byName", "options": "EGX30"},
+            "properties": [
+              {"id": "displayName", "value": "EGX 30 Index"},
+              {"id": "color", "value": {"mode": "fixed", "fixedColor": "dark-blue"}}
+            ]
+          },
+          {
+            "matcher": {"id": "byName", "options": "EGX30CAPPED"},
+            "properties": [
+              {"id": "displayName", "value": "EGX 30 Capped"},
+              {"id": "color", "value": {"mode": "fixed", "fixedColor": "dark-green"}}
+            ]
+          },
+          {
+            "matcher": {"id": "byName", "options": "EGX70EWI"},
+            "properties": [
+              {"id": "displayName", "value": "EGX 70 EWI"},
+              {"id": "color", "value": {"mode": "fixed", "fixedColor": "dark-purple"}}
+            ]
+          },
+          {
+            "matcher": {"id": "byName", "options": "EGX100EWI"},
+            "properties": [
+              {"id": "displayName", "value": "EGX 100 EWI"},
+              {"id": "color", "value": {"mode": "fixed", "fixedColor": "dark-orange"}}
+            ]
+          }
+        ]
       }
     },
     {
       "id": 2,
-      "type": "timeseries",
-      "title": "Live Stock Prices",
-      "gridPos": {"h": 12, "w": 16, "x": 0, "y": 4},
-      "datasource": {"type": "influxdb", "uid": "P3C6603E967DC8568"},
-      "targets": [{
-        "refId": "A",
-        "query": "from(bucket: \"market_data\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"stock_price\")\n  |> filter(fn: (r) => r._field == \"close\")\n  |> aggregateWindow(every: 1d, fn: last, createEmpty: false)\n  |> group(columns: [\"symbol\"])"
-      }],
-      "options": {
-        "legend": {
-          "displayMode": "table",
-          "placement": "bottom",
-          "showLegend": true,
-          "calcs": ["lastNotNull", "max", "min", "mean"]
-        },
-        "tooltip": {"mode": "multi", "sort": "desc"}
-      },
-      "fieldConfig": {
-        "defaults": {
-          "custom": {
-            "lineWidth": 2,
-            "fillOpacity": 15,
-            "pointSize": 4,
-            "showPoints": "auto",
-            "spanNulls": true
-          },
-          "unit": "currencyEGP",
-          "decimals": 2,
-          "color": {"mode": "palette-classic"},
-          "displayNameFromDS": "symbol"
-        }
-      }
-    },
-    {
-      "id": 3,
-      "type": "stat",
-      "title": "Top Performers",
-      "gridPos": {"h": 6, "w": 8, "x": 16, "y": 4},
-      "datasource": {"type": "influxdb", "uid": "P3C6603E967DC8568"},
-      "targets": [{
-        "refId": "A",
-        "query": "from(bucket: \"market_data\")\n  |> range(start: -7d)\n  |> filter(fn: (r) => r._measurement == \"stock_price\")\n  |> filter(fn: (r) => r._field == \"close\")\n  |> group(columns: [\"symbol\"])\n  |> last()\n  |> sort(desc: true)\n  |> limit(n: 5)"
-      }],
-      "options": {
-        "orientation": "vertical",
-        "textMode": "value_and_name",
-        "colorMode": "background",
-        "graphMode": "area"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "currencyEGP",
-          "decimals": 2,
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {"value": null, "color": "green"},
-              {"value": 50, "color": "yellow"},
-              {"value": 100, "color": "red"}
-            ]
-          }
-        }
-      }
-    },
-    {
-      "id": 4,
       "type": "bargauge",
-      "title": "Trading Volume",
-      "gridPos": {"h": 6, "w": 8, "x": 16, "y": 10},
+      "title": "📈 Top Volume Stocks (24h)",
+      "gridPos": {"h": 6, "w": 8, "x": 8, "y": 0},
       "datasource": {"type": "influxdb", "uid": "P3C6603E967DC8568"},
       "targets": [{
         "refId": "A",
-        "query": "from(bucket: \"market_data\")\n  |> range(start: -24h)\n  |> filter(fn: (r) => r._measurement == \"stock_price\")\n  |> filter(fn: (r) => r._field == \"volume\")\n  |> group(columns: [\"symbol\"])\n  |> sum()"
+        "query": "from(bucket: \"market_data\")\n  |> range(start: -24h)\n  |> filter(fn: (r) => r._measurement == \"stock_price\")\n  |> filter(fn: (r) => r._field == \"volume\")\n  |> filter(fn: (r) => r.symbol != \"EGX30\" and r.symbol != \"EGX30CAPPED\" and r.symbol != \"EGX70EWI\" and r.symbol != \"EGX100EWI\")\n  |> group(columns: [\"symbol\"])\n  |> sum()\n  |> keep(columns: [\"_time\", \"_value\", \"symbol\"])\n  |> group()\n  |> sort(columns: [\"_value\"], desc: true)\n  |> limit(n: 10)\n  |> map(fn: (r) => ({r with _field: r.symbol}))\n  |> drop(columns: [\"symbol\"])"
       }],
       "options": {
         "orientation": "horizontal",
@@ -135,81 +102,114 @@
       }
     },
     {
-      "id": 5,
-      "type": "piechart",
-      "title": "Market Share by Volume",
-      "gridPos": {"h": 8, "w": 8, "x": 0, "y": 16},
+      "id": 3,
+      "type": "stat",
+      "title": "🚀 Stock Gainers (7d)",
+      "gridPos": {"h": 6, "w": 8, "x": 16, "y": 0},
       "datasource": {"type": "influxdb", "uid": "P3C6603E967DC8568"},
       "targets": [{
         "refId": "A",
-        "query": "from(bucket: \"market_data\")\n  |> range(start: -24h)\n  |> filter(fn: (r) => r._measurement == \"stock_price\")\n  |> filter(fn: (r) => r._field == \"volume\")\n  |> group(columns: [\"symbol\"])\n  |> sum()\n  |> group()"
+        "query": "from(bucket: \"market_data\")\n  |> range(start: -7d)\n  |> filter(fn: (r) => r._measurement == \"stock_price\")\n  |> filter(fn: (r) => r._field == \"close\")\n  |> filter(fn: (r) => r.symbol != \"EGX30\" and r.symbol != \"EGX30CAPPED\" and r.symbol != \"EGX70EWI\" and r.symbol != \"EGX100EWI\")\n  |> group(columns: [\"symbol\"])\n  |> sort(columns: [\"_time\"])\n  |> difference(nonNegative: false)\n  |> sum()\n  |> keep(columns: [\"_value\", \"symbol\"])\n  |> group()\n  |> sort(columns: [\"_value\"], desc: true)\n  |> limit(n: 5)\n  |> map(fn: (r) => ({r with _field: r.symbol}))\n  |> drop(columns: [\"symbol\"])"
       }],
       "options": {
-        "legend": {
-          "displayMode": "table",
-          "placement": "right",
-          "values": ["value", "percent"]
-        },
-        "pieType": "donut",
-        "tooltip": {"mode": "single"}
+        "orientation": "vertical",
+        "textMode": "value_and_name",
+        "colorMode": "background",
+        "graphMode": "area"
       },
       "fieldConfig": {
         "defaults": {
-          "unit": "short",
-          "decimals": 0
+          "unit": "locale",
+          "custom": {"suffix": " EGP"},
+          "decimals": 2,
+          "displayName": "${__field.labels.symbol}",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"value": null, "color": "green"},
+              {"value": 5, "color": "yellow"},
+              {"value": 10, "color": "orange"}
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "📉 Stock Losers (7d)",
+      "gridPos": {"h": 6, "w": 8, "x": 0, "y": 6},
+      "datasource": {"type": "influxdb", "uid": "P3C6603E967DC8568"},
+      "targets": [{
+        "refId": "A",
+        "query": "from(bucket: \"market_data\")\n  |> range(start: -7d)\n  |> filter(fn: (r) => r._measurement == \"stock_price\")\n  |> filter(fn: (r) => r._field == \"close\")\n  |> filter(fn: (r) => r.symbol != \"EGX30\" and r.symbol != \"EGX30CAPPED\" and r.symbol != \"EGX70EWI\" and r.symbol != \"EGX100EWI\")\n  |> group(columns: [\"symbol\"])\n  |> sort(columns: [\"_time\"])\n  |> difference(nonNegative: false)\n  |> sum()\n  |> keep(columns: [\"_value\", \"symbol\"])\n  |> group()\n  |> sort(columns: [\"_value\"], desc: false)\n  |> limit(n: 5)\n  |> map(fn: (r) => ({r with _field: r.symbol}))\n  |> drop(columns: [\"symbol\"])"
+      }],
+      "options": {
+        "orientation": "vertical",
+        "textMode": "value_and_name",
+        "colorMode": "background",
+        "graphMode": "area"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "locale",
+          "custom": {"suffix": " EGP"},
+          "decimals": 2,
+          "displayName": "${__field.labels.symbol}",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"value": -20, "color": "dark-red"},
+              {"value": -10, "color": "red"},
+              {"value": -5, "color": "orange"},
+              {"value": 0, "color": "yellow"}
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": 5,
+      "type": "bargauge",
+      "title": "⚡ Most Volatile Stocks (7d Range)",
+      "gridPos": {"h": 6, "w": 8, "x": 8, "y": 6},
+      "datasource": {"type": "influxdb", "uid": "P3C6603E967DC8568"},
+      "targets": [{
+        "refId": "A",
+        "query": "high = from(bucket: \"market_data\")\n  |> range(start: -7d)\n  |> filter(fn: (r) => r._measurement == \"stock_price\")\n  |> filter(fn: (r) => r._field == \"high\")\n  |> filter(fn: (r) => r.symbol != \"EGX30\" and r.symbol != \"EGX30CAPPED\" and r.symbol != \"EGX70EWI\" and r.symbol != \"EGX100EWI\")\n  |> group(columns: [\"symbol\"])\n  |> max()\n  |> keep(columns: [\"symbol\", \"_value\"])\n  |> rename(columns: {_value: \"high_val\"})\n\nlow = from(bucket: \"market_data\")\n  |> range(start: -7d)\n  |> filter(fn: (r) => r._measurement == \"stock_price\")\n  |> filter(fn: (r) => r._field == \"low\")\n  |> filter(fn: (r) => r.symbol != \"EGX30\" and r.symbol != \"EGX30CAPPED\" and r.symbol != \"EGX70EWI\" and r.symbol != \"EGX100EWI\")\n  |> group(columns: [\"symbol\"])\n  |> min()\n  |> keep(columns: [\"symbol\", \"_value\"])\n  |> rename(columns: {_value: \"low_val\"})\n\njoin(tables: {high: high, low: low}, on: [\"symbol\"])\n  |> map(fn: (r) => ({symbol: r.symbol, _value: r.high_val - r.low_val}))\n  |> group()\n  |> sort(columns: [\"_value\"], desc: true)\n  |> limit(n: 10)\n  |> map(fn: (r) => ({r with _field: r.symbol}))\n  |> drop(columns: [\"symbol\"])"
+      }],
+      "options": {
+        "orientation": "horizontal",
+        "displayMode": "gradient",
+        "showUnfilled": true
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "locale",
+          "custom": {"suffix": " EGP"},
+          "decimals": 2,
+          "displayName": "${__field.labels.symbol}",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"value": null, "color": "blue"},
+              {"value": 5, "color": "yellow"},
+              {"value": 10, "color": "orange"},
+              {"value": 15, "color": "red"}
+            ]
+          }
         }
       }
     },
     {
       "id": 6,
-      "type": "timeseries",
-      "title": "Price Range (High vs Low)",
-      "gridPos": {"h": 8, "w": 8, "x": 8, "y": 16},
-      "datasource": {"type": "influxdb", "uid": "P3C6603E967DC8568"},
-      "targets": [
-        {
-          "refId": "A",
-          "query": "from(bucket: \"market_data\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"stock_price\")\n  |> filter(fn: (r) => r._field == \"high\")\n  |> aggregateWindow(every: 1d, fn: max, createEmpty: false)"
-        },
-        {
-          "refId": "B",
-          "query": "from(bucket: \"market_data\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"stock_price\")\n  |> filter(fn: (r) => r._field == \"low\")\n  |> aggregateWindow(every: 1d, fn: min, createEmpty: false)"
-        }
-      ],
-      "options": {
-        "legend": {"displayMode": "list", "placement": "bottom"},
-        "tooltip": {"mode": "multi"}
-      },
-      "fieldConfig": {
-        "defaults": {
-          "custom": {
-            "lineWidth": 2,
-            "fillOpacity": 20
-          },
-          "unit": "currencyEGP",
-          "decimals": 2
-        },
-        "overrides": [
-          {
-            "matcher": {"id": "byName", "options": "high"},
-            "properties": [{"id": "color", "value": {"mode": "fixed", "fixedColor": "green"}}]
-          },
-          {
-            "matcher": {"id": "byName", "options": "low"},
-            "properties": [{"id": "color", "value": {"mode": "fixed", "fixedColor": "red"}}]
-          }
-        ]
-      }
-    },
-    {
-      "id": 7,
       "type": "table",
-      "title": "Latest Stock Prices",
-      "gridPos": {"h": 8, "w": 8, "x": 16, "y": 16},
+      "title": "📋 All Companies - Latest Data",
+      "gridPos": {"h": 6, "w": 8, "x": 16, "y": 6},
       "datasource": {"type": "influxdb", "uid": "P3C6603E967DC8568"},
       "targets": [{
         "refId": "A",
-        "query": "from(bucket: \"market_data\")\n  |> range(start: -24h)\n  |> filter(fn: (r) => r._measurement == \"stock_price\")\n  |> filter(fn: (r) => r._field == \"close\" or r._field == \"volume\")\n  |> group(columns: [\"symbol\"])\n  |> last()\n  |> pivot(rowKey:[\"_time\"], columnKey: [\"_field\"], valueColumn: \"_value\")"
+        "query": "from(bucket: \"market_data\")\n  |> range(start: -24h)\n  |> filter(fn: (r) => r._measurement == \"stock_price\")\n  |> filter(fn: (r) => r._field == \"close\" or r._field == \"volume\")\n  |> filter(fn: (r) => r.symbol != \"EGX30\" and r.symbol != \"EGX30CAPPED\" and r.symbol != \"EGX70EWI\" and r.symbol != \"EGX100EWI\")\n  |> group(columns: [\"symbol\"])\n  |> last()\n  |> pivot(rowKey:[\"_time\"], columnKey: [\"_field\"], valueColumn: \"_value\")"
       }],
       "options": {
         "showHeader": true,
@@ -224,7 +224,8 @@
             "matcher": {"id": "byName", "options": "close"},
             "properties": [
               {"id": "displayName", "value": "Price (EGP)"},
-              {"id": "unit", "value": "currencyEGP"},
+              {"id": "unit", "value": "locale"},
+              {"id": "custom.suffix", "value": " EGP"},
               {"id": "decimals", "value": 2},
               {"id": "custom.displayMode", "value": "color-background"}
             ]
@@ -245,6 +246,69 @@
             ]
           }
         ]
+      }
+    },
+    {
+      "id": 7,
+      "type": "timeseries",
+      "title": "📈 Live Stock Prices (5 Years)",
+      "gridPos": {"h": 12, "w": 16, "x": 0, "y": 12},
+      "datasource": {"type": "influxdb", "uid": "P3C6603E967DC8568"},
+      "targets": [{
+        "refId": "A",
+        "query": "from(bucket: \"market_data\")\n  |> range(start: -5y)\n  |> filter(fn: (r) => r._measurement == \"stock_price\")\n  |> filter(fn: (r) => r._field == \"close\")\n  |> aggregateWindow(every: 1d, fn: last, createEmpty: false)\n  |> group(columns: [\"symbol\"])\n  |> keep(columns: [\"_time\", \"_value\", \"symbol\"])\n  |> map(fn: (r) => ({r with _field: r.symbol}))\n  |> drop(columns: [\"symbol\"])"
+      }],
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true,
+          "calcs": ["lastNotNull", "max", "min", "mean"]
+        },
+        "tooltip": {"mode": "multi", "sort": "desc"}
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 15,
+            "pointSize": 4,
+            "showPoints": "auto",
+            "spanNulls": true,
+            "suffix": " EGP"
+          },
+          "unit": "locale",
+          "decimals": 2,
+          "color": {"mode": "palette-classic"}
+        }
+      }
+    },
+    {
+      "id": 8,
+      "type": "piechart",
+      "title": "🥧 Market Share by Volume (24h)",
+      "gridPos": {"h": 12, "w": 8, "x": 16, "y": 12},
+
+      "datasource": {"type": "influxdb", "uid": "P3C6603E967DC8568"},
+      "targets": [{
+        "refId": "A",
+        "query": "from(bucket: \"market_data\")\n  |> range(start: -24h)\n  |> filter(fn: (r) => r._measurement == \"stock_price\")\n  |> filter(fn: (r) => r._field == \"volume\")\n  |> filter(fn: (r) => r.symbol != \"EGX30\" and r.symbol != \"EGX30CAPPED\" and r.symbol != \"EGX70EWI\" and r.symbol != \"EGX100EWI\")\n  |> group(columns: [\"symbol\"])\n  |> sum()\n  |> keep(columns: [\"_time\", \"_value\", \"symbol\"])\n  |> group()\n  |> map(fn: (r) => ({r with _field: r.symbol}))\n  |> drop(columns: [\"symbol\"])"
+      }],
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "values": ["value", "percent"]
+        },
+        "pieType": "donut",
+        "tooltip": {"mode": "single"}
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "displayName": "${__field.labels.symbol}"
+        }
       }
     }
   ],
