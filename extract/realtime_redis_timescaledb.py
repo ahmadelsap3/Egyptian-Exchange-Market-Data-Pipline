@@ -204,13 +204,23 @@ class RedisTimescaleDBHandler:
         records_inserted = 0
         
         try:
-            # Get all buffered ticks from Redis
+            # Atomically get all buffered ticks from Redis using LRANGE + LTRIM
+            # This prevents race conditions with concurrent buffer_tick() calls
+            buffer_size = self.redis_client.llen(REDIS_LIST_KEY)
+            
+            if buffer_size == 0:
+                LOG.info("No ticks to flush")
+                return 0
+            
+            # Get all items from the list
+            tick_jsons = self.redis_client.lrange(REDIS_LIST_KEY, 0, buffer_size - 1)
+            
+            # Remove the items we just read (atomic operation)
+            self.redis_client.ltrim(REDIS_LIST_KEY, buffer_size, -1)
+            
+            # Parse the ticks
             ticks = []
-            while True:
-                tick_json = self.redis_client.lpop(REDIS_LIST_KEY)
-                if tick_json is None:
-                    break
-                
+            for tick_json in tick_jsons:
                 try:
                     tick = json.loads(tick_json)
                     ticks.append(tick)
@@ -219,7 +229,7 @@ class RedisTimescaleDBHandler:
                     continue
             
             if not ticks:
-                LOG.info("No ticks to flush")
+                LOG.info("No valid ticks to flush")
                 return 0
             
             LOG.info(f"Flushing {len(ticks)} ticks to TimescaleDB...")
@@ -240,8 +250,9 @@ class RedisTimescaleDBHandler:
             self.pg_conn.rollback()
             LOG.error(f"✗ Failed to flush to database: {e}")
             
-            # Put ticks back into Redis on failure
-            for tick in ticks:
+            # Restore ticks to Redis in reverse order to maintain chronological order
+            # Since we read from left (oldest first), we push back to left to maintain order
+            for tick in reversed(ticks):
                 self.redis_client.lpush(REDIS_LIST_KEY, json.dumps(tick))
             LOG.info(f"Restored {len(ticks)} ticks back to Redis buffer")
             

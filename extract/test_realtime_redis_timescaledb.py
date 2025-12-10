@@ -16,6 +16,9 @@ import os
 # Add current directory to path to import the module
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
+# Import the REDIS_LIST_KEY constant for tests
+from realtime_redis_timescaledb import REDIS_LIST_KEY
+
 
 class TestRedisTimescaleDBHandler(unittest.TestCase):
     """Test cases for RedisTimescaleDBHandler."""
@@ -83,7 +86,7 @@ class TestRedisTimescaleDBHandler(unittest.TestCase):
     
     def test_flush_to_db_empty_buffer(self):
         """Test flushing when buffer is empty."""
-        self.mock_redis_client.lpop.return_value = None
+        self.mock_redis_client.llen.return_value = 0
         
         records_inserted = self.handler.flush_to_db()
         
@@ -105,11 +108,13 @@ class TestRedisTimescaleDBHandler(unittest.TestCase):
             'volume': 5000
         }
         
-        # Mock lpop to return ticks then None
-        self.mock_redis_client.lpop.side_effect = [
+        # Mock llen to return buffer size
+        self.mock_redis_client.llen.return_value = 2
+        
+        # Mock lrange to return ticks
+        self.mock_redis_client.lrange.return_value = [
             json.dumps(tick1),
-            json.dumps(tick2),
-            None
+            json.dumps(tick2)
         ]
         
         # Mock cursor with proper execute method
@@ -126,6 +131,8 @@ class TestRedisTimescaleDBHandler(unittest.TestCase):
             self.mock_pg_conn.commit.assert_called_once()
             # Verify execute_batch was called
             mock_execute_batch.assert_called_once()
+            # Verify ltrim was called to remove processed items
+            self.mock_redis_client.ltrim.assert_called_once_with(REDIS_LIST_KEY, 2, -1)
     
     def test_data_validation(self):
         """Test that tick data is properly validated."""
