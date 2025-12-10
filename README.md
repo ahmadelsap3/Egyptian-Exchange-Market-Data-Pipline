@@ -94,40 +94,60 @@ Market hours: Sunday-Thursday 10:00-14:30 Cairo time
 **Location**: `airflow/dags/`
 - `egx_full_pipeline.py` - Main DAG running batch + dbt daily at 1 AM Cairo time
 - `dbt_scheduled_transformations.py` - dbt-only transformations
-dbt run --select marts    # Gold only
-dbt test         # Data quality tests
-dbt docs generate && dbt docs serve  # Documentation
-```
 
 ## Project Structure
 
 ```
 Egyptian-Exchange-Market-Data-Pipline/
-├── airflow/dags/                   # Airflow orchestration
-│   ├── egx_full_pipeline.py       # Main daily pipeline
-│   └── dbt_scheduled_transformations.py
-├── egx_streaming_pipeline/         # Real-time pipeline
-│   ├── docker-compose.yml         # 9 services (Kafka, Spark, TimescaleDB, Grafana)
-│   ├── producer/egx_producer.py   # Mock data generator (25 stocks + 4 indices)
-│   ├── spark-processor/           # Spark Structured Streaming job
-│   └── grafana/dashboards/        # Real-time dashboard config
-├── egyptian_stocks/                # dbt project (current)
+├── airflow/
+│   └── dags/
+│       ├── egx_full_pipeline.py
+│       └── dbt_scheduled_transformations.py
+├── egx_streaming_pipeline/
+│   ├── docker-compose.yml
+│   ├── producer/
+│   │   └── egx_producer.py
+│   ├── spark-processor/
+│   │   └── egx_spark_job.py
+│   └── grafana/
+│       └── dashboards/
+│           └── egx-live.json
+├── egyptian_stocks/
 │   └── models/
-│       ├── staging/               # Bronze: stg_companies, stg_prices, stg_finance
-│       ├── silver/                # Dimensions & Facts
-│       └── marts/                 # Analytics views
-├── extract/                       # Data extraction
-│   ├── batch_processor.py         # S3 → Snowflake
-│   ├── meta_finance_scrape.py     # Web scraping
-│   ├── kaggle/                    # Kaggle dataset downloader
-│   └── aws/connect_aws.py         # AWS utilities
-├── scripts/loaders/               # Data loading utilities
-│   ├── load_all_data_batch.py
-│   ├── load_index_membership.py
-│   └── load_market_stats.py
-├── iam/                           # AWS IAM setup scripts
-├── sql/                           # Database DDL
-└── docs/                          # Documentation
+│       ├── staging/
+│       │   ├── stg_companies.sql
+│       │   ├── stg_prices.sql
+│       │   └── stg_finance.sql
+│       ├── silver/
+│       │   ├── dim_company.sql
+│       │   ├── dim_sector.sql
+│       │   ├── dim_industry.sql
+│       │   ├── fct_prices.sql
+│       │   └── fct_financials.sql
+│       └── marts/
+│           ├── company_overview.sql
+│           └── price_summary.sql
+├── extract/
+│   ├── batch_processor.py
+│   ├── meta_finance_scrape.py
+│   ├── kaggle/
+│   │   └── download_kaggle.py
+│   └── aws/
+│       └── connect_aws.py
+├── scripts/
+│   └── loaders/
+│       ├── load_all_data_batch.py
+│       ├── load_index_membership.py
+│       └── load_market_stats.py
+├── iam/
+│   ├── bootstrap_admin.py
+│   ├── create_bucket.sh
+│   └── setup_aws_iam.sh
+├── sql/
+│   └── 00_create_database_from_scratch.sql
+└── docs/
+    ├── ARCHITECTURE.md
+    └── EGX_INDICES.md
 ```
 
 ## Data Schema
