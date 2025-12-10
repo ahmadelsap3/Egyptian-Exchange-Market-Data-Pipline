@@ -9,6 +9,10 @@ kafka-python
 boto3
 influxdb-client>=1.36.0  # DEPRECATED - will remove after Snowflake migration
 
+# Real-time buffer and time-series DB
+redis>=5.0.0
+psycopg2-binary>=2.9.0
+
 # Snowflake dependencies (NEW - for operational DB + DWH)
 snowflake-connector-python>=3.6.0
 snowflake-snowpark-python>=1.11.0
