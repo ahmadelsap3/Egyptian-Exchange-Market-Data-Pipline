@@ -46,6 +46,7 @@ services:
             - ../../airflow/logs:/opt/airflow/logs
             - ../../airflow/plugins:/opt/airflow/plugins
             - ../../extract:/opt/extract
+            - ../../scripts:/opt/airflow/scripts
         networks:
             - de-network
         command: >
@@ -79,6 +80,7 @@ services:
             - ../../airflow/logs:/opt/airflow/logs
             - ../../airflow/plugins:/opt/airflow/plugins
             - ../../extract:/opt/extract
+            - ../../scripts:/opt/airflow/scripts
         networks:
             - de-network
         ports:
@@ -113,6 +115,7 @@ services:
             - ../../airflow/logs:/opt/airflow/logs
             - ../../airflow/plugins:/opt/airflow/plugins
             - ../../extract:/opt/extract
+            - ../../scripts:/opt/airflow/scripts
         networks:
             - de-network
         command: bash -c "exec airflow scheduler"

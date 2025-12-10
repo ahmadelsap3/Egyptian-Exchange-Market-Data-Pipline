@@ -140,7 +140,7 @@ def load_s3_to_snowflake(**context):
     exec_date = context['execution_date'].strftime('%Y-%m-%d')
     
     cmd = [
-        sys.executable, '/opt/airflow/scripts/load_all_sources.py',
+        sys.executable, '/opt/airflow/scripts/loaders/load_all_data_batch.py',
         '--load-all', '--bucket', bucket, '--to', exec_date
     ]
     

@@ -16,7 +16,9 @@ RUN pip install --no-cache-dir \
 RUN pip install --no-cache-dir \
     kafka-python \
     boto3 \
-    influxdb-client
+    influxdb-client \
+    snowflake-connector-python \
+    apache-airflow-providers-snowflake
 
 # Force reinstall airflow 2.9.0 with its constraints (this will also install compatible providers)
 RUN pip install --force-reinstall --no-cache-dir \
