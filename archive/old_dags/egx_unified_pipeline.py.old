@@ -58,6 +58,11 @@ def determine_run_type(**context):
     
     print(f"⏰ Execution time: {exec_time.strftime('%Y-%m-%d %H:%M')} ({exec_time.strftime('%A')})")
     
+    # Allow manual override for testing
+    if context.get('dag_run') and context['dag_run'].conf.get('force_daily'):
+        print("⚡ MANUAL OVERRIDE: Forcing Daily Pipeline")
+        return 'start_daily_pipeline'
+    
     # Saturday maintenance (2:00 AM)
     if weekday == 5 and hour == 2 and minute == 0:
         print("🔧 Running: WEEKLY MAINTENANCE")
@@ -140,7 +145,7 @@ def load_s3_to_snowflake(**context):
     exec_date = context['execution_date'].strftime('%Y-%m-%d')
     
     cmd = [
-        sys.executable, '/opt/airflow/scripts/load_all_sources.py',
+        sys.executable, '/opt/airflow/scripts/loaders/load_all_data_batch.py',
         '--load-all', '--bucket', bucket, '--to', exec_date
     ]
     

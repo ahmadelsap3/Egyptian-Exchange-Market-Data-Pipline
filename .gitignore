@@ -26,6 +26,7 @@ build/
 venv/
 TEAM_CREDENTIALS.txt
 *.credentials.txt
+/env
 
 # dbt
 target/
