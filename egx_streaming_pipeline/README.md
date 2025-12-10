@@ -1,287 +1,500 @@
-# 🇪🇬 Egyptian Exchange (EGX) Streaming Pipeline
+# EGX Real-Time Streaming Pipeline
 
-Real-time streaming pipeline for Egyptian stock market data, inspired by TradingView's market overview.
+A complete real-time data pipeline for the Egyptian Stock Exchange (EGX) built with Apache Kafka, Apache Spark Structured Streaming, TimescaleDB, and Grafana.
 
-## 📋 Architecture
+## 📊 Architecture Overview
 
 ```
-┌─────────────┐      ┌───────┐      ┌───────────┐      ┌─────────┐
-│ TradingView │ ───> │ Kafka │ ───> │ Processor │ ───> │ QuestDB │
-│  (Source)   │      │       │      │           │      │         │
-└─────────────┘      └───────┘      └───────────┘      └─────────┘
-                                                              │
-                                                              v
-                                                        ┌─────────┐
-                                                        │ Grafana │
-                                                        └─────────┘
+┌─────────────────┐
+│  EGX Producer   │  Generate mock stock data (25 stocks + 4 indices)
+│   (Python)      │  Market hours: Sun-Thu 10:00-14:30 Cairo time
+└────────┬────────┘
+         │ Publishes every 30 seconds
+         ▼
+┌─────────────────┐
+│  Apache Kafka   │  Topic: egx-stock-data (3 partitions)
+│  (kafka:latest) │  Port: 9092
+└────────┬────────┘
+         │ Consumes stream
+         ▼
+┌─────────────────┐
+│  Apache Spark   │  Structured Streaming with Spark 3.4.1
+│  Spark Job      │  - Timestamp conversion (to_timestamp)
+│  (PySpark)      │  - Schema enforcement
+└────────┬────────┘
+         │ JDBC write
+         ▼
+┌─────────────────┐
+│  TimescaleDB    │  PostgreSQL with TimescaleDB extension
+│  (Postgres 16)  │  Database: egx_market
+│                 │  Hypertable: egx_stock_prices
+└────────┬────────┘
+         │ Query
+         ▼
+┌─────────────────┐
+│    Grafana      │  Real-time dashboard on port 3000
+│   (v10.0.0)     │  Auto-refresh every 5 seconds
+└─────────────────┘
 ```
 
-### Components
+## 🚀 Features
 
-- **Producer**: Scrapes Egyptian stock data and publishes to Kafka
-- **Kafka**: Message broker for real-time data streaming
-- **Processor**: Consumes Kafka messages and stores in QuestDB
-- **QuestDB**: High-performance time-series database
-- **Grafana**: Beautiful visualizations and dashboards
+### Data Generation
+- **25 Egyptian stocks** with realistic company names and tickers
+- **4 market indices**: EGX30, EGX70, EGX100, EGX33 (Sharia)
+- **Market hours awareness**: Generates mock data when market is closed
+- **Realistic movements**: Price changes between -5% to +5%
+- **Volume simulation**: Random trading volumes for stocks
+
+### Stream Processing
+- Real-time data ingestion via Kafka
+- Apache Spark Structured Streaming for processing
+- Automatic timestamp conversion and data validation
+- Parallel processing across 3 Kafka partitions
+
+### Data Storage
+- TimescaleDB (time-series optimized PostgreSQL)
+- Hypertable for efficient time-series queries
+- Automatic data retention and compression
+
+### Visualization
+- Real-time Grafana dashboard
+- Market status indicator (Open/Closed)
+- Live stock price charts with 30-minute window
+- EGX indices display with change percentages
+- Top 10 Gainers & Losers tables
+- Trading volume pie chart
+- Market statistics (Active Stocks, Average Price, Total Volume)
+
+## 🛠️ Tech Stack
+
+| Component | Technology | Version | Purpose |
+|-----------|-----------|---------|---------|
+| **Message Broker** | Apache Kafka | latest | Stream ingestion |
+| **Stream Processing** | Apache Spark | 3.4.1 | Data transformation |
+| **Database** | TimescaleDB | latest-pg16 | Time-series storage |
+| **Visualization** | Grafana | 10.0.0 | Real-time dashboard |
+| **Monitoring** | Kafka UI | latest | Kafka monitoring |
+| **Database Admin** | pgAdmin | latest | Database management |
+| **Language** | Python | 3.9+ | Producer & Spark job |
+
+## 📦 Project Structure
+
+```
+egx_streaming_pipeline/
+├── docker-compose.yml          # Orchestrates all services
+├── producer/
+│   ├── Dockerfile             # Python producer container
+│   ├── egx_producer.py        # Stock data generator
+│   └── requirements.txt       # Producer dependencies
+├── spark-processor/
+│   ├── Dockerfile             # Spark processor container
+│   ├── egx_spark_job.py       # Spark Structured Streaming job
+│   └── requirements.txt       # Spark job dependencies
+└── grafana/
+    └── dashboards/
+        └── egx-live.json      # Dashboard configuration
+```
 
 ## 🚀 Quick Start
 
 ### Prerequisites
-- Docker & Docker Compose
-- 4GB RAM minimum
-- Ports available: 9092 (Kafka), 9000 (QuestDB), 3000 (Grafana)
+- Docker & Docker Compose installed
+- At least 8GB RAM available
+- Ports available: 3000, 5050, 5432, 8090, 9092
 
-### Launch Pipeline
+### Step 1: Start All Services
 
 ```powershell
 cd egx_streaming_pipeline
 docker-compose up -d
 ```
 
-### Access Services
+This starts 9 services:
+1. **Kafka** - Message broker (port 9092)
+2. **Kafka UI** - Kafka monitoring (port 8090)
+3. **TimescaleDB** - Database (port 5432)
+4. **pgAdmin** - Database admin (port 5050)
+5. **Spark Master** - Spark cluster master
+6. **Spark Worker** - Spark cluster worker
+7. **EGX Producer** - Data generator
+8. **EGX Spark Processor** - Stream processor
+9. **Grafana** - Dashboard (port 3000)
 
-- **QuestDB Console**: http://localhost:9000
-- **Grafana Dashboard**: http://localhost:3000 (admin/admin)
-- **Dashboard URL**: http://localhost:3000/d/egx-market-overview
+### Step 2: Access Services
 
-### Check Logs
+| Service | URL | Credentials |
+|---------|-----|-------------|
+| Grafana Dashboard | http://localhost:3000 | admin / admin |
+| Kafka UI | http://localhost:8090 | None |
+| pgAdmin | http://localhost:5050 | admin@admin.com / admin |
 
-```powershell
-# Producer logs
-docker logs egx-producer -f
+### Step 3: View Dashboard
 
-# Processor logs
-docker logs egx-processor -f
+1. Open Grafana at http://localhost:3000
+2. Login with admin/admin
+3. Go to Dashboards → EGX Live Market Dashboard
+4. Watch real-time stock data flowing!
 
-# All services
-docker-compose logs -f
-```
+## 📊 Data Schema
 
-### Stop Pipeline
-
-```powershell
-docker-compose down
-
-# Remove data volumes
-docker-compose down -v
-```
-
-## 📊 Dashboard Features
-
-### 📈 Panels
-
-1. **Stock Prices Time Series** - Last hour price movements
-2. **Top Gainers** - Stocks with highest % increase
-3. **Top Losers** - Stocks with highest % decrease
-4. **Most Active** - Highest trading volumes
-5. **Market Value Distribution** - Pie chart of top 10 stocks
-6. **Market Statistics** - Total stocks, avg change, volume, data points
-
-### 🎨 Visualizations
-
-- **Color-coded tables**: Green for gains, red for losses
-- **Real-time updates**: 10-second refresh
-- **Company names**: Full Egyptian company names displayed
-- **Currency**: All prices in EGP (Egyptian Pounds)
-
-## 📈 Tracked Stocks (25 EGX Companies)
-
-| Ticker | Company Name |
-|--------|--------------|
-| COMI | Commercial International Bank (Egypt) |
-| EKHO | El Kahera Housing |
-| HRHO | Heliopolis Housing |
-| BTFH | Beltone Financial Holding |
-| PHDC | Palm Hills Developments |
-| OCDI | Orascom Construction Industries |
-| JUFO | Juhayna Food Industries |
-| ETEL | Egyptian Company for Mobile Services |
-| ESRS | Eastern Company S.A.E. |
-| SWDY | El Swedy Electric |
-| GTHE | GB Auto |
-| TMGH | TMG Holding |
-| ORTE | Oriental Weavers |
-| ALCN | Alexandria Container and Cargo Handling |
-| HELI | Heliopolis Company for Housing and Development |
-| SVCE | South Valley Cement |
-| MEPA | Medical Packaging Company |
-| NCCW | Nasr Co. for Civil Works |
-| ICID | International Company for Investment & Development |
-| IFAP | International Agricultural Products |
-| BONY | Bonyan for Development and Trade |
-| NIPH | El Nasr Company for Intermediate Chemicals |
-| TPCO | Tenth of Ramadan Pharmaceutical |
-| CCAP | Credit Agricole Egypt |
-| FWRY | Fawry for Banking Technology and Electronic Payments |
-
-## 🔧 Configuration
-
-### Environment Variables
-
-**Producer** (`producer/.env`):
-```env
-KAFKA_BOOTSTRAP_SERVERS=kafka:9092
-KAFKA_TOPIC=egx-stock-data
-FETCH_INTERVAL=30  # seconds
-```
-
-**Processor** (`processor/.env`):
-```env
-KAFKA_BOOTSTRAP_SERVERS=kafka:9092
-KAFKA_TOPIC=egx-stock-data
-KAFKA_GROUP_ID=egx-processor-group
-QUESTDB_HOST=questdb
-QUESTDB_PORT=9000
-```
-
-## 📊 QuestDB Queries
-
-```sql
--- View latest prices
-SELECT * FROM egx_stock_prices 
-ORDER BY timestamp DESC 
-LIMIT 20;
-
--- Top gainers today
-SELECT ticker, company_name, price_change_percent 
-FROM egx_stock_prices 
-WHERE timestamp IN (SELECT max(timestamp) FROM egx_stock_prices)
-ORDER BY price_change_percent DESC 
-LIMIT 10;
-
--- Total market volume
-SELECT SUM(volume) as total_volume 
-FROM egx_stock_prices 
-WHERE timestamp IN (SELECT max(timestamp) FROM egx_stock_prices);
-
--- Average price change
-SELECT AVG(price_change_percent) as avg_change 
-FROM egx_stock_prices 
-WHERE timestamp IN (SELECT max(timestamp) FROM egx_stock_prices);
-```
-
-## 🛠️ Development
-
-### Local Testing (without Docker)
-
-```powershell
-# Install dependencies
-cd producer
-pip install -r requirements.txt
-
-cd ../processor
-pip install -r requirements.txt
-
-# Start Kafka & QuestDB separately, then:
-python producer/egx_producer.py
-python processor/egx_processor.py
-```
-
-### Adding More Stocks
-
-Edit `producer/egx_producer.py`:
-```python
-EGX_STOCKS = {
-    "NEWCO": "New Company Name",
-    # ... add more
+### Kafka Message Format (JSON)
+```json
+{
+  "ticker": "COMI",
+  "company_name": "Commercial International Bank (Egypt)",
+  "price": 95.25,
+  "volume": 1234567,
+  "price_change_percent": 2.35,
+  "time": "2025-12-11T10:30:00",
+  "currency": "EGP",
+  "market_status": "OPEN",
+  "is_mock": true
 }
 ```
 
-## ⚠️ Important Notes
+### TimescaleDB Table Schema
+```sql
+CREATE TABLE egx_stock_prices (
+    time TIMESTAMPTZ NOT NULL,
+    ticker TEXT NOT NULL,
+    company_name TEXT,
+    price DOUBLE PRECISION,
+    volume BIGINT,
+    price_change_percent DOUBLE PRECISION,
+    currency TEXT,
+    market_status TEXT,
+    is_mock BOOLEAN
+);
 
-### Current Data Source
-The producer currently uses **simulated data** because:
-- TradingView requires JavaScript rendering (needs Selenium/Playwright)
-- No free official EGX API available
-- Demo purposes to show pipeline functionality
+-- Hypertable for time-series optimization
+SELECT create_hypertable('egx_stock_prices', 'time');
+```
 
-### For Production Use
-Replace `fetch_stock_data()` in `egx_producer.py` with:
+## 🔧 Configuration
 
-1. **Official EGX API** (if available with subscription)
-2. **Selenium/Playwright** for TradingView scraping:
-   ```python
-   from selenium import webdriver
-   driver = webdriver.Chrome()
-   driver.get("https://www.tradingview.com/symbols/EGX-COMI/")
+### Producer Configuration (`producer/egx_producer.py`)
+
+```python
+# Market hours (Cairo timezone - EET/EEST)
+MARKET_OPEN_HOUR = 10   # 10:00 AM
+MARKET_CLOSE_HOUR = 14  # 2:00 PM
+MARKET_CLOSE_MINUTE = 30  # 2:30 PM
+
+# Trading days (Sunday = 0, Thursday = 4)
+TRADING_DAYS = [0, 1, 2, 3, 4]  # Sun-Thu
+
+# Data generation interval
+SLEEP_INTERVAL = 30  # seconds between updates
+```
+
+### Kafka Configuration
+
+```yaml
+KAFKA_BROKER: kafka:9092
+KAFKA_TOPIC: egx-stock-data
+KAFKA_PARTITIONS: 3
+```
+
+### Spark Configuration
+
+```python
+# Spark Structured Streaming settings
+.option("kafka.bootstrap.servers", "kafka:9092")
+.option("subscribe", "egx-stock-data")
+.option("startingOffsets", "earliest")
+.trigger(processingTime="10 seconds")
+```
+
+## 📈 Dashboard Panels
+
+### 1. Market Status
+- Shows current market status (OPEN/CLOSED)
+- Green background when open, red when closed
+- Updates based on Cairo timezone
+
+### 2. EGX Market Indices
+- Displays 4 indices: EGX30, EGX70, EGX100, EGX33 Sharia
+- Shows current value in Points
+- Color-coded percentage change (green = positive, red = negative)
+
+### 3. Stock Prices Chart
+- Time-series line chart
+- 30-minute rolling window
+- Shows price movements for all 25 stocks
+- Lines with null-spanning for continuity
+
+### 4. Top 10 Gainers
+- Table showing best performing stocks
+- Columns: Company Name, Symbol, Price, Change %
+- Green background on percentage change
+
+### 5. Top 10 Losers
+- Table showing worst performing stocks
+- Red background on percentage change
+
+### 6. Top 10 Trading Volume
+- Pie chart showing volume distribution
+- Top 10 most actively traded stocks
+- Shows company names and percentages
+
+### 7. Statistics Panels
+- **Active Stocks**: Count of stocks with data in last 5 minutes
+- **Average Price**: Mean price across all stocks
+- **Total Volume**: Sum of trading volume
+
+## 🐳 Docker Services
+
+### Service Details
+
+```yaml
+services:
+  kafka:
+    image: apache/kafka:latest
+    ports: [9092:9092]
+    
+  kafka-ui:
+    image: provectuslabs/kafka-ui
+    ports: [8090:8080]
+    
+  timescaledb:
+    image: timescale/timescaledb:latest-pg16
+    ports: [5432:5432]
+    environment:
+      POSTGRES_DB: egx_market
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    ports: [5050:80]
+    
+  spark-master:
+    image: apache/spark:3.4.1
+    
+  spark-worker:
+    image: apache/spark:3.4.1
+    depends_on: [spark-master]
+    
+  egx-producer:
+    build: ./producer
+    depends_on: [kafka]
+    
+  egx-spark-processor:
+    build: ./spark-processor
+    depends_on: [kafka, timescaledb, spark-master]
+    
+  grafana:
+    image: grafana/grafana:10.0.0
+    ports: [3000:3000]
+```
+
+## 🔍 Monitoring & Debugging
+
+### View Producer Logs
+```powershell
+docker logs egx-producer -f
+```
+
+Expected output:
+```
+Connected to Kafka broker
+✓ Iteration 1 [MOCK]: Published 25 stocks + 4 indices
+Market is CLOSED - generating mock data
+✓ Iteration 2 [MOCK]: Published 25 stocks + 4 indices
+```
+
+### View Spark Processor Logs
+```powershell
+docker logs egx-spark-processor -f
+```
+
+### Check Kafka Messages
+1. Open Kafka UI: http://localhost:8090
+2. Go to Topics → egx-stock-data
+3. View messages in real-time
+
+### Query Database Directly
+```powershell
+docker exec -it egx-timescaledb psql -U postgres -d egx_market
+```
+
+Useful queries:
+```sql
+-- Count total records
+SELECT COUNT(*) FROM egx_stock_prices;
+
+-- Latest prices for all stocks
+SELECT DISTINCT ON (ticker) 
+    ticker, company_name, price, price_change_percent, time
+FROM egx_stock_prices 
+ORDER BY ticker, time DESC;
+
+-- Check indices only
+SELECT * FROM egx_stock_prices 
+WHERE ticker LIKE 'EGX%' 
+ORDER BY time DESC 
+LIMIT 10;
+```
+
+## 🛠️ Troubleshooting
+
+### Producer Not Generating Data
+```powershell
+# Restart producer
+docker-compose restart egx-producer
+
+# Check logs
+docker logs egx-producer -f
+```
+
+### Spark Job Failing
+```powershell
+# Check Spark logs
+docker logs egx-spark-processor -f
+
+# Restart Spark services
+docker-compose restart spark-master spark-worker egx-spark-processor
+```
+
+### No Data in Grafana
+1. Check TimescaleDB has data:
+   ```sql
+   SELECT COUNT(*) FROM egx_stock_prices;
    ```
-3. **Financial Data APIs**:
-   - Alpha Vantage
-   - IEX Cloud
-   - Yahoo Finance (limited EGX coverage)
+2. Verify Grafana datasource connection (Configuration → Data sources)
+3. Check query in panel (Edit panel → Query inspector)
 
-## 🎯 TradingView-Style Features
+### Kafka Issues
+1. Open Kafka UI: http://localhost:8090
+2. Check topic exists: `egx-stock-data`
+3. Verify messages are being published
+4. Check consumer groups
 
-This pipeline replicates TradingView's Egypt market page features:
+## 📊 Data Flow Example
 
-✅ **Top Gainers/Losers** - Color-coded tables
-✅ **Most Active Stocks** - By volume
-✅ **Real-time Price Charts** - Time series visualization
-✅ **Market Statistics** - Total stocks, avg change, volume
-✅ **Market Value Distribution** - Pie chart
-✅ **Company Names** - Full Egyptian company names
-✅ **Auto-refresh** - 10-second updates
+```
+Time: 10:30:00 (Market Open)
+─────────────────────────────────────────────────────
 
-## 🔄 Data Flow
+Producer generates:
+  COMI: 95.25 EGP (+2.35%)
+  BTFH: 53.20 EGP (-1.88%)
+  ...25 stocks
+  EGX30: 27,500 Points (+1.54%)
+  ...4 indices
 
-1. **Producer** fetches stock data every 30 seconds
-2. **Kafka** streams data in real-time
-3. **Processor** consumes and stores in QuestDB
-4. **Grafana** queries QuestDB and displays dashboards
-5. **Auto-refresh** keeps data current
+        ↓ 30 seconds
 
-## 📈 Scaling
+Kafka receives 29 messages
+  Partition 0: 10 messages
+  Partition 1: 10 messages  
+  Partition 2: 9 messages
 
-- **Increase stocks**: Add tickers to `EGX_STOCKS`
-- **Faster updates**: Reduce `FETCH_INTERVAL`
-- **More partitions**: Adjust Kafka `KAFKA_NUM_PARTITIONS`
-- **Horizontal scaling**: Deploy multiple processor instances
+        ↓ 10 seconds (Spark trigger)
 
-## 🆘 Troubleshooting
+Spark processes batch:
+  - Parse JSON
+  - Convert timestamps
+  - Validate schema
+  - Write to TimescaleDB
 
-### No data in Grafana
-```powershell
-# Check producer is running
-docker logs egx-producer --tail=50
+        ↓ 5 seconds (Grafana refresh)
 
-# Check processor
-docker logs egx-processor --tail=50
+Grafana queries:
+  - Latest prices
+  - Calculate gainers/losers
+  - Aggregate statistics
+  - Render dashboard
 
-# Verify QuestDB has data
-# Open http://localhost:9000
-# Run: SELECT COUNT(*) FROM egx_stock_prices;
+        ↓ User sees real-time update!
 ```
 
-### Kafka connection errors
-```powershell
-# Restart Kafka
-docker-compose restart kafka
+## 🎯 Use Cases
 
-# Check Kafka health
-docker exec egx-kafka kafka-topics.sh --list --bootstrap-server localhost:9092
+1. **Real-Time Market Monitoring**
+   - Track EGX stock prices in real-time
+   - Monitor market indices
+   - Identify trading opportunities
+
+2. **Historical Analysis**
+   - Query historical price data
+   - Analyze trading patterns
+   - Generate reports
+
+3. **Alert System**
+   - Set up Grafana alerts for price thresholds
+   - Get notified on significant market moves
+   - Monitor specific stocks
+
+4. **Learning & Development**
+   - Practice stream processing concepts
+   - Learn Kafka & Spark integration
+   - Build real-time dashboards
+
+## 🔐 Security Notes
+
+**This is a development setup. For production:**
+
+- Change default passwords (Postgres, Grafana, pgAdmin)
+- Enable Kafka authentication (SASL/SSL)
+- Use secrets management (not environment variables)
+- Enable Grafana authentication
+- Set up network security groups
+- Use TLS/SSL for all connections
+
+## 🚀 Performance Optimization
+
+### For Higher Throughput
+```yaml
+# Increase Kafka partitions
+docker exec kafka kafka-topics \
+  --alter --topic egx-stock-data \
+  --partitions 6 --bootstrap-server kafka:9092
+
+# Add more Spark workers
+docker-compose up -d --scale spark-worker=3
 ```
 
-### Grafana dashboard not loading
-```powershell
-# Restart Grafana
-docker-compose restart grafana
-
-# Check provisioning
-docker exec egx-grafana ls /var/lib/grafana/dashboards
+### For Better Query Performance
+```sql
+-- Add indices on TimescaleDB
+CREATE INDEX idx_ticker_time ON egx_stock_prices (ticker, time DESC);
+CREATE INDEX idx_time ON egx_stock_prices (time DESC);
 ```
 
-## 📝 License
+## 📝 Future Enhancements
 
-MIT License - Feel free to use for educational/personal projects
+- [ ] Add real EGX API integration
+- [ ] Implement alerting system
+- [ ] Add more technical indicators
+- [ ] Support for minute-by-minute data
+- [ ] Historical data backfill
+- [ ] Machine learning price prediction
+- [ ] WebSocket API for live data
+- [ ] Mobile app integration
+- [ ] Multi-market support
 
-## 🤝 Contributing
+## 📚 Resources
 
-Contributions welcome! Especially:
-- Real EGX data source integration
-- Additional dashboard visualizations
-- Performance optimizations
-- More Egyptian stocks
+- [Apache Kafka Documentation](https://kafka.apache.org/documentation/)
+- [Apache Spark Structured Streaming](https://spark.apache.org/docs/latest/structured-streaming-programming-guide.html)
+- [TimescaleDB Documentation](https://docs.timescale.com/)
+- [Grafana Documentation](https://grafana.com/docs/)
+- [Egyptian Exchange Official Site](https://www.egx.com.eg/)
 
----
+## 📄 License
 
-**Built with** ❤️ **for the Egyptian Exchange market**
+This project is for educational purposes.
+
+## 👤 Author
+
+Ahmad Elsayed
+- GitHub: [@ahmadelsap3](https://github.com/ahmadelsap3)
+
+## 🙏 Acknowledgments
+
+- Egyptian Exchange for market data inspiration
+- Apache Software Foundation for Kafka & Spark
+- TimescaleDB team for time-series optimization
+- Grafana Labs for visualization tools

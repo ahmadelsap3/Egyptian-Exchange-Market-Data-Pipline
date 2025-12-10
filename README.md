@@ -1,490 +1,343 @@
 # Egyptian Exchange Market Data Pipeline
 
-Complete end-to-end data pipeline for Egyptian Exchange (EGX) market data, combining **batch processing**, **real-time streaming**, and **analytics transformations**.
+End-to-end data pipeline for Egyptian Stock Exchange (EGX) with batch processing, real-time streaming, and dbt transformations.
 
-[![Architecture](https://img.shields.io/badge/Architecture-Kafka%20%2B%20Snowflake%20%2B%20dbt-blue)](docs/ARCHITECTURE.md)
-[![Pipeline Status](https://img.shields.io/badge/Pipeline-Operational-green)](#monitoring)
+## Architecture
 
-## 🎯 Overview
-
-This project implements a production-ready data pipeline that:
-- **Streams** real-time market data for 249 Egyptian Exchange companies
-- **Processes** historical batch data from S3
-- **Transforms** raw data into analytics-ready tables using dbt
-- **Orchestrates** workflows with Airflow
-- **Monitors** pipeline health and data quality
-
-## 🏗️ Architecture
-
+### Batch Pipeline (Historical Data)
 ```
-EGX API → Kafka → Snowflake OPERATIONAL → dbt (Silver/Gold) → Analytics
-   ↓                                          ↑
-S3 Batch Data ────────────────────────────────┘
+Kaggle/S3 → AWS → Python Batch Processor → Snowflake (Bronze) 
+    → dbt (Silver/Gold) → Power BI
 ```
 
-**Full architecture diagram**: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
+### Streaming Pipeline (Real-Time Data)
+```
+Yahoo Finance API → Kafka → Apache Spark → TimescaleDB → Grafana
+```
 
-## 🚀 Quick Start
+Both pipelines orchestrated with Apache Airflow + Docker.
+
+## Quick Start
 
 ### Prerequisites
-- Python 3.10+
+- Python 3.9+
 - Docker & Docker Compose
 - Snowflake account
 - AWS account (for S3)
 
-### Installation
+### Setup
 
-1. **Clone repository**
+Clone and install dependencies:
 ```bash
 git clone https://github.com/ahmadelsap3/Egyptian-Exchange-Market-Data-Pipline.git
 cd Egyptian-Exchange-Market-Data-Pipline
-```
-
-2. **Set up Python environment**
-```bash
-python -m venv .venv-aws
-source .venv-aws/bin/activate
+python -m venv .venv
+.venv\Scripts\activate  # Windows
 pip install -r requirements.txt
 ```
 
-3. **Configure credentials**
+### Start Streaming Pipeline
 ```bash
-# Copy and edit .env file
-cp egx_dw/.env.example egx_dw/.env
-# Add your Snowflake and AWS credentials
+cd egx_streaming_pipeline
+docker-compose up -d
 ```
+Access Grafana dashboard: http://localhost:3000 (admin/admin)
 
-4. **Start the pipeline**
-```bash
-./scripts/start_pipeline.sh
-```
-
-That's it! 🎉
-
-## 📊 Components
-
-### 1. Streaming Pipeline (Real-time)
-- **Producer**: Fetches live data from EGX API using `egxpy` library
-- **Kafka**: Message broker (port 9093)
-- **Consumer**: Writes to Snowflake in micro-batches (100 records)
-- **Frequency**: Every 5 minutes
-- **Coverage**: 249 Egyptian Exchange companies
-
-**Start streaming only**:
-```bash
-./scripts/start_streaming.sh
-```
-
-### 2. Batch Processing (Historical)
-- **Source**: CSV files in S3 (`egx-data-bucket`)
-- **Processor**: Python script with pandas + Snowflake connector
-- **Schedule**: Daily via Airflow (1 AM Cairo time)
-
-**Process batch manually**:
+### Run Batch Processing
 ```bash
 python extract/batch_processor.py --bucket egx-data-bucket --since 7
 ```
 
-### 3. dbt Transformations
-- **Silver Layer**: Cleaned, validated staging tables
-- **Gold Layer**: Analytics-ready dimensional models
-- **Tests**: 63 data quality tests
-
-**Run dbt manually**:
+### Run dbt Transformations
 ```bash
-cd egx_dw
-source ../.venv-aws/bin/activate
-export $(cat .env | grep -v '^#' | xargs)
+cd egyptian_stocks
+dbt run
+dbt test
+```
 
-dbt run          # All models
-dbt run --select staging  # Silver only
+## Components
+
+### 1. Batch Processing
+**Source**: `extract/batch_processor.py`
+- Pulls CSV files from S3 or Kaggle
+- Loads into Snowflake OPERATIONAL schema
+- Scheduled daily via Airflow
+
+### 2. Real-Time Streaming
+**Location**: `egx_streaming_pipeline/`
+- **Producer** (`producer/egx_producer.py`): Generates mock EGX data for 25 stocks + 4 indices
+- **Kafka**: Message broker on port 9092
+- **Spark Processor** (`spark-processor/egx_spark_job.py`): Stream processing with Spark 3.4.1
+- **TimescaleDB**: PostgreSQL time-series database
+- **Grafana**: Real-time dashboard with auto-refresh
+
+Market hours: Sunday-Thursday 10:00-14:30 Cairo time
+
+### 3. dbt Transformations
+**Project**: `egyptian_stocks/`
+
+**Staging Layer** (Bronze):
+- `stg_companies.sql` - Company master data
+- `stg_prices.sql` - Stock prices
+- `stg_finance.sql` - Financial statements
+
+**Silver Layer** (Dimensions & Facts):
+- `dim_company.sql`, `dim_sector.sql`, `dim_industry.sql`, `dim_location.sql`, `dim_currency.sql`, `dim_date.sql`
+- `fct_prices.sql` - Daily stock prices fact table
+- `fct_financials.sql` - Financial metrics fact table
+
+**Marts Layer** (Analytics):
+- `company_overview.sql` - Company profiles with latest metrics
+- `price_summary.sql` - Price analytics and trends
+
+### 4. Orchestration
+**Location**: `airflow/dags/`
+- `egx_full_pipeline.py` - Main DAG running batch + dbt daily at 1 AM Cairo time
+- `dbt_scheduled_transformations.py` - dbt-only transformations
 dbt run --select marts    # Gold only
 dbt test         # Data quality tests
 dbt docs generate && dbt docs serve  # Documentation
 ```
 
-### 4. Airflow Orchestration
-Two DAGs for workflow automation:
-
-**`dbt_scheduled_transformations`**
-- Schedule: Twice daily (2 AM and 2 PM Cairo time)
-- Tasks: Run dbt staging → marts → tests → docs
-
-**`egx_full_pipeline`**
-- Schedule: Daily at 1 AM Cairo time  
-- Tasks: Check health → Process batch → Run dbt → Validate quality
-
-**Access Airflow UI**: http://localhost:8081 (admin/admin)
-
-## 📁 Project Structure
+## Project Structure
 
 ```
 Egyptian-Exchange-Market-Data-Pipline/
-├── extract/
-│   ├── egxpy_streaming/
-│   │   └── producer_kafka.py          # Kafka producer
-│   ├── streaming/
-│   │   └── consumer_snowflake.py      # Kafka consumer → Snowflake
-│   └── batch_processor.py             # S3 → Snowflake batch loader
-├── egx_dw/                            # dbt project
-│   ├── models/
-│   │   ├── staging/                   # Silver layer (5 models)
-│   │   └── marts/                     # Gold layer (7 models)
-│   ├── tests/                         # Data quality tests
-│   └── dbt_project.yml
-├── airflow/
-│   ├── dags/                          # Orchestration DAGs
-│   │   ├── dbt_scheduled_transformations.py
-│   │   └── egx_full_pipeline.py
-│   └── plugins/                       # Custom Airflow plugins
-├── infrastructure/
-│   └── docker/
-│       └── docker-compose.yml         # Kafka, Airflow, Grafana
-├── scripts/
-│   ├── monitoring/
-│   │   └── monitor_streaming.sh       # Health check script
-│   └── utils/
-└── docs/
-    └── ARCHITECTURE.md                # Complete architecture docs
+├── airflow/dags/                   # Airflow orchestration
+│   ├── egx_full_pipeline.py       # Main daily pipeline
+│   └── dbt_scheduled_transformations.py
+├── egx_streaming_pipeline/         # Real-time pipeline
+│   ├── docker-compose.yml         # 9 services (Kafka, Spark, TimescaleDB, Grafana)
+│   ├── producer/egx_producer.py   # Mock data generator (25 stocks + 4 indices)
+│   ├── spark-processor/           # Spark Structured Streaming job
+│   └── grafana/dashboards/        # Real-time dashboard config
+├── egyptian_stocks/                # dbt project (current)
+│   └── models/
+│       ├── staging/               # Bronze: stg_companies, stg_prices, stg_finance
+│       ├── silver/                # Dimensions & Facts
+│       └── marts/                 # Analytics views
+├── extract/                       # Data extraction
+│   ├── batch_processor.py         # S3 → Snowflake
+│   ├── meta_finance_scrape.py     # Web scraping
+│   ├── kaggle/                    # Kaggle dataset downloader
+│   └── aws/connect_aws.py         # AWS utilities
+├── scripts/loaders/               # Data loading utilities
+│   ├── load_all_data_batch.py
+│   ├── load_index_membership.py
+│   └── load_market_stats.py
+├── iam/                           # AWS IAM setup scripts
+├── sql/                           # Database DDL
+└── docs/                          # Documentation
 ```
 
-## 📈 Data Flow
+## Data Schema
 
-### Operational Layer (Raw)
-**Database**: `EGX_OPERATIONAL_DB.OPERATIONAL`
+### TimescaleDB (Streaming Pipeline)
+**Database**: `egx_market`  
+**Hypertable**: `egx_stock_prices`
 
-| Table | Records | Description |
-|-------|---------|-------------|
-| TBL_COMPANY | 249 | Company master data |
-| TBL_STOCK_PRICE | 130K+ | Daily OHLCV price data |
-| TBL_FINANCIAL | 3.5K | Financial statements |
-| TBL_MARKET_STAT | - | Market statistics |
-| TBL_INDEX | 3 | EGX30, EGX70, EGX100 |
-| TBL_INDEX_MEMBERSHIP | 176 | Company-index relationships |
-
-### Silver Layer (Staging)
-**Schema**: `EGX_OPERATIONAL_DB.DWH_SILVER`
-- Cleaned and validated data
-- Type conversions applied
-- Business rules enforced
-
-### Gold Layer (Analytics)
-**Schema**: `EGX_OPERATIONAL_DB.DWH_GOLD`
-- `gold_dim_company`: Company dimension
-- `gold_fct_stock_daily_prices`: Fact table with prices
-- `gold_fct_index_performance`: Index performance metrics
-- Plus 4 pre-built analytics views
-
-## 🔍 Monitoring
-
-### Health Check
-```bash
-./scripts/monitoring/monitor_streaming.sh
-```
-
-Checks:
-- ✓ Kafka Docker containers running
-- ✓ Producer/Consumer processes active
-- ✓ Recent data in Snowflake (< 1 hour)
-- ✓ Log file sizes
-- ⚠ Error rates in logs
-
-### View Logs
-```bash
-# Real-time monitoring
-tail -f logs/producer.log
-tail -f logs/consumer.log
-
-# Last 100 lines
-tail -100 logs/producer.log
-tail -100 logs/consumer.log
-```
-
-### Check Data Freshness
 ```sql
+CREATE TABLE egx_stock_prices (
+    time TIMESTAMPTZ NOT NULL,
+    ticker VARCHAR(10),
+    company_name VARCHAR(255),
+    price NUMERIC(10,2),
+    price_change_percent NUMERIC(5,2),
+    volume BIGINT,
+    market_status VARCHAR(10),
+    index_name VARCHAR(50)
+);
+```
+
+### Snowflake (Batch Pipeline)
+**Database**: `EGX_OPERATIONAL_DB`
+
+**Schemas**:
+- `OPERATIONAL` - Raw batch data from S3
+- `BRONZE` - Staging models (egyptian_stocks dbt)
+- `SILVER` - Dimensional models
+- `MARTS` - Analytics views
+
+**Main Tables**:
+- `TBL_COMPANY` - Company master data
+- `TBL_STOCK_PRICE` - Historical prices
+- `TBL_FINANCIAL` - Financial statements
+- `TBL_INDEX` - Market indices
+- `TBL_INDEX_MEMBERSHIP` - Index constituents
+
+## Configuration
+
+### Environment Variables
+```bash
+# Snowflake
+SNOWFLAKE_ACCOUNT=your_account
+SNOWFLAKE_USER=your_user
+SNOWFLAKE_PASSWORD=your_password
+SNOWFLAKE_WAREHOUSE=COMPUTE_WH
+
+# AWS
+AWS_ACCESS_KEY_ID=your_key
+AWS_SECRET_ACCESS_KEY=your_secret
+AWS_REGION=us-east-1
+
+# Kafka (Streaming)
+KAFKA_BOOTSTRAP_SERVERS=localhost:9092
+```
+
+### dbt Profile
+`egyptian_stocks/profiles.yml`:
+```yaml
+egyptian_stocks:
+  target: dev
+  outputs:
+    dev:
+      type: snowflake
+      account: "{{ env_var('SNOWFLAKE_ACCOUNT') }}"
+      user: "{{ env_var('SNOWFLAKE_USER') }}"
+      password: "{{ env_var('SNOWFLAKE_PASSWORD') }}"
+      role: ACCOUNTADMIN
+      database: EGX_OPERATIONAL_DB
+      warehouse: COMPUTE_WH
+      schema: BRONZE
+      threads: 4
+```
+
+## Monitoring
+
+### Streaming Pipeline
+Check Docker services:
+```bash
+cd egx_streaming_pipeline
+docker-compose ps
+docker logs egx-producer -f
+docker logs egx-spark-processor -f
+```
+
+Access UIs:
+- Grafana: http://localhost:3000 (admin/admin)
+- Kafka UI: http://localhost:8090
+- pgAdmin: http://localhost:5050
+
+Query TimescaleDB:
+```bash
+docker exec -it egx-timescaledb psql -U postgres -d egx_market
+```
+
+```sql
+SELECT COUNT(*) FROM egx_stock_prices;
+SELECT DISTINCT ON (ticker) * FROM egx_stock_prices ORDER BY ticker, time DESC;
+```
+
+### Batch Pipeline
+Check Airflow:
+- UI: http://localhost:8081 (admin/admin)
+- View DAG runs, task logs, execution history
+
+Query Snowflake:
+```sql
+-- Check recent batch data
 SELECT 
     COUNT(*) as records,
-    COUNT(DISTINCT COMPANY_ID) as companies,
     MAX(CREATED_AT) as latest_record
 FROM EGX_OPERATIONAL_DB.OPERATIONAL.TBL_STOCK_PRICE
-WHERE DATA_SOURCE = 'STREAMING_API'
-AND CREATED_AT > DATEADD(hour, -1, CURRENT_TIMESTAMP());
+WHERE CREATED_AT > DATEADD(hour, -24, CURRENT_TIMESTAMP());
 ```
 
-### Airflow Monitoring
-- **Web UI**: http://localhost:8081
-- **DAG Runs**: View execution history
-- **Task Logs**: Click task → View Log
-- **Email Alerts**: Configured for failures
-
-## 🛠️ Operations
-
-### Start Pipeline
+### dbt
 ```bash
-# Complete pipeline (Kafka + Streaming + Airflow)
-./start_pipeline.sh
-
-# Streaming only
-./start_streaming.sh
+cd egyptian_stocks
+dbt run
+dbt test
+dbt docs generate
+dbt docs serve  # View docs at http://localhost:8080
 ```
 
-### Stop Pipeline
+## Troubleshooting
+
+### Streaming Pipeline Issues
 ```bash
-# Graceful shutdown
-./scripts/stop_pipeline.sh
+# Check all services
+cd egx_streaming_pipeline
+docker-compose ps
 
-# Or stop specific components
-kill <PRODUCER_PID> <CONSUMER_PID>
-docker compose -f infrastructure/docker/docker-compose.yml down
+# Restart services
+docker-compose restart
+
+# View logs
+docker logs egx-producer -f
+docker logs egx-spark-processor -f
+docker logs egx-kafka -f
 ```
 
-### Restart Components
+### No Data in Grafana
+1. Check TimescaleDB: `SELECT COUNT(*) FROM egx_stock_prices;`
+2. Verify Grafana datasource: Configuration → Data sources
+3. Check panel queries: Edit panel → Query inspector
+
+### Batch Processing Errors
 ```bash
-# Restart streaming
-./scripts/stop_pipeline.sh
-./scripts/start_streaming.sh
+# Check S3 connection
+aws s3 ls s3://egx-data-bucket
 
-# Restart Kafka
-docker compose -f infrastructure/docker/docker-compose.yml restart kafka
+# Check Snowflake connection
+python -c "import snowflake.connector; print('OK')"
 
-# Restart Airflow
-docker compose -f infrastructure/docker/docker-compose.yml restart airflow airflow-scheduler
+# Run with debug
+python extract/batch_processor.py --bucket egx-data-bucket --since 1
 ```
 
-## 🐛 Troubleshooting
-
-### No New Streaming Data
-**Check**:
-1. Producer running? `ps aux | grep producer_kafka`
-2. Consumer running? `ps aux | grep consumer_snowflake`
-3. Kafka healthy? `docker ps | grep kafka`
-4. Errors in logs? `tail -100 consumer.log | grep -i error`
-
-**Fix**: `./start_streaming.sh`
-
-### dbt Tests Failing
-**Check**:
-1. Snowflake connection: `cd egx_dw && dbt debug`
-2. Recent data exists in OPERATIONAL tables
-3. Review specific test failures in output
-
-**Fix**: 
+### dbt Errors
 ```bash
-cd egx_dw
-dbt run --select <failing_model>
-dbt test --select <failing_model>
+cd egyptian_stocks
+dbt debug  # Check connection
+dbt compile  # Check SQL compilation
+dbt run --debug  # Verbose logging
 ```
 
-### Airflow DAG Not Running
-**Check**:
-1. Airflow services: `docker ps | grep airflow`
-2. DAG syntax: `python infrastructure/airflow/dags/<dag_name>.py`
-3. DAG enabled in UI
+### Airflow DAG Issues
+- Check DAG is enabled in UI
+- View task logs: Click task → View Log
+- Check connections: Admin → Connections
+- Verify environment variables in docker-compose
 
-**Fix**: Check Airflow logs in UI or restart services
+## AWS Setup
 
-## 📊 Dashboards & Visualization
+IAM scripts in `iam/`:
+- `bootstrap_admin.py` - Create admin IAM user
+- `create_team_users.sh` - Create team IAM users
+- `create_bucket.sh` - Create S3 bucket with versioning
+- `setup_aws_iam.sh` - Complete IAM setup
 
-### Grafana Cloud (Recommended) ⭐
-- **Integration**: Connect to Snowflake for free!
-- **Setup Guide**: [grafana/README.md](grafana/README.md)
-- **Ready-to-use Queries**: [grafana/snowflake_queries.sql](grafana/snowflake_queries.sql)
-- **Security Setup**: [grafana/create_grafana_user.sql](grafana/create_grafana_user.sql)
-
-**Quick Start:**
-1. Install Snowflake plugin in Grafana Cloud
-2. Run `grafana/create_grafana_user.sql` in Snowflake
-3. Connect using GRAFANA_USER credentials
-4. Copy queries from `grafana/snowflake_queries.sql`
-
-### Local Grafana (Optional)
-- **URL**: http://localhost:3000
-- **Credentials**: admin / admin
-- **Data Source**: InfluxDB (for real-time metrics)
-
-### Looker Studio / BI Tools
-Connect to Snowflake DWH_GOLD schema:
-- `gold_dim_company`
-- `gold_fct_stock_daily_prices`
-- `vw_*` analytics views
-
-## 🔒 Security
-
-- ✅ No hardcoded credentials (all use environment variables)
-- ✅ Git history cleaned (sensitive data removed)
-- ✅ `.env` files in `.gitignore`
-- ✅ Airflow credentials configurable
-
-## 📝 Development
-
-### Running Tests
-```bash
-# dbt tests
-cd egx_dw && dbt test
-
-# Python tests (if added)
-pytest tests/
-```
-
-### Adding New Models
-1. Create SQL file in `egx_dw/models/staging/` or `marts/`
-2. Add tests in YAML schema files
-3. Run: `dbt run --select <new_model>`
-4. Test: `dbt test --select <new_model>`
-
-### Adding New DAG
-1. Create Python file in `infrastructure/airflow/dags/`
-2. Follow existing DAG patterns
-3. Restart Airflow scheduler
-4. Enable DAG in UI
-
-## 🎓 Reference & Credits
-
-Architecture inspired by:
-- [DTC Data Engineering Project](https://github.com/Deathslayer89/DTC_dataEngg) - Kafka + Spark + dbt patterns
-- dbt Labs best practices
-- Snowflake data warehouse patterns
-- Apache Airflow orchestration patterns
-
-## 📜 License
-
-MIT License - see LICENSE file
-
-## 🤝 Contributing
-
-Contributions welcome! Please:
-1. Fork the repository
-2. Create feature branch
-3. Test changes thoroughly
-4. Submit pull request
-
-## 📧 Contact
-
-Ahmed Elsaba - [@ahmadelsap3](https://github.com/ahmadelsap3)
-
-Project Link: https://github.com/ahmadelsap3/Egyptian-Exchange-Market-Data-Pipline
-
----
-
-**Status**: ✅ Pipeline operational with 249 companies streaming real-time data
-
-Real-time and historical market data platform for EGX (Egyptian Exchange) with streaming ingestion, data warehousing, and analytics dashboards.
-
-## Team
-Ahmed Elsaba, Karim Yasser, Alaa Hamam, Ahmed Arnos, Eslam Shatto
-
-## Architecture
-
-**Real-time Path:**
-```
-EGX API → Kafka → InfluxDB → Grafana (5s refresh)
-```
-
-**Batch Path:**
-```
-Sources → Kafka → S3 → Snowflake (Bronze) → dbt (Silver/Gold) → Grafana
-```
-
-Both pipelines consume from the same Kafka topic (`egx_market_data`):
-- `consumer_influxdb.py` → real-time dashboard
-- `consumer_kafka.py` → S3 historical storage
-
-## Quick Start
-
-### Real-time Dashboard
-```bash
-# Start services
-docker compose -f infrastructure/docker/docker-compose.dev.yml up -d
-
-# Start consumers
-source .venv/bin/activate
-python extract/realtime/consumer_influxdb.py --topic egx_market_data --bootstrap localhost:9093 &
-
-# Start producer
-python extract/egxpy_streaming/producer_kafka.py \
-  --symbols COMI,ETEL --interval Daily --n-bars 10 --bootstrap-servers localhost:9093
-
-# Access: http://localhost:3000 (admin/admin)
-```
-
-### Historical Analytics (dbt)
-```bash
-# Setup S3 integration (one-time)
-./setup_s3_pipeline.sh
-
-# Run transformations
-cd egx_dw && dbt run --profiles-dir ~/.dbt
-dbt test --profiles-dir ~/.dbt
-
-# View: Grafana unified dashboard (historical + real-time)
-```
-
-## Repository Structure
-```
-extract/
-├── egxpy_streaming/     # EGX API → Kafka producer
-├── realtime/            # Kafka → InfluxDB consumer
-├── streaming/           # Kafka → S3 consumer
-└── kaggle/              # Historical datasets
-
-egx_dw/                  # dbt project
-├── models/
-│   ├── staging/         # Bronze → Silver (cleaned)
-│   └── marts/           # Silver → Gold (analytics)
-└── tests/               # Data quality tests
-
-sql/                     # Snowflake setup scripts
-infrastructure/docker/   # Kafka, InfluxDB, Grafana
-iam/                     # AWS IAM for S3 access
-docs/                    # Technical documentation
-```
-
-## Data Flow
-
-**Current Metrics:**
-- 82K+ records (2019-2025)
-- 39 stocks tracked
-- 13/13 dbt tests passing
-- Real-time latency <5s
-
-## Git Workflow
-
-**Branches:**
-- `main`: Production releases (protected)
-- `dev-test`: Integration branch
-- `feature/<scope>-<description>`: Feature work
-
-**Process:**
-1. Branch from `dev-test`
-2. PR to `dev-test` (requires 2 approvals)
-3. Merge to `dev-test` → smoke test
-4. Release PR to `main`
+Policies:
+- `egx_team_upload_policy.json` - S3 upload permissions for team
+- `snowflake-s3-read-policy.json` - Snowflake S3 read access
+- `snowflake-trust-policy.json` - Cross-account trust policy
 
 ## Documentation
 
-- `egx_dw/README.md` - dbt setup and workflow
-- `extract/README.md` - Data extraction pipelines
-- `docs/ARCHITECTURE.md` - System design
-- `docs/DATABASE_DESIGN.md` - Schema and data model
-- `docs/STREAMING_ARCHITECTURE.md` - Streaming pipeline
-- `docs/UPLOAD_TO_S3.md` - S3 upload guide
-- `docs/CONTRIBUTION_WORKFLOW.md` - Git workflow
-- `docs/PROJECT_PLAN.md` - Team milestones
+- `docs/ARCHITECTURE.md` - System architecture details
+- `docs/PROJECT_STRUCTURE.md` - Complete file structure
+- `docs/CLEANUP.md` - Data cleanup procedures
+- `docs/EGX_INDICES.md` - EGX market indices reference
+- `egx_streaming_pipeline/README.md` - Streaming pipeline guide (500+ lines)
+- `docs/dbt/DBT_COMPLETION_REPORT.md` - dbt implementation details
 
-## Local Services
+## Requirements
 
-- Grafana: http://localhost:3000 (admin/admin)
-- Kafka UI: http://localhost:8082
-- InfluxDB: http://localhost:8086 (admin/admin123456)
-- Snowflake: See `docs/UPLOAD_TO_S3.md` for credentials
+Python packages (`requirements.txt`):
+- `requests`, `beautifulsoup4` - Web scraping
+- `kaggle` - Kaggle dataset downloads
+- `kafka-python` - Kafka producer/consumer
+- `boto3` - AWS S3 operations
+- `snowflake-connector-python` - Snowflake operations
+- `dbt-core`, `dbt-snowflake` - dbt transformations
+- `pandas`, `numpy` - Data processing
+- `egxpy` - EGX API client (from GitHub)
 
-## Tech Stack
-- **Streaming**: Kafka, InfluxDB
-- **Storage**: AWS S3, Snowflake
-- **Transform**: dbt (medallion architecture)
-- **Orchestration**: Docker Compose
-- **Visualization**: Grafana
-- **Languages**: Python, SQL
+## Team
+
+Ahmad Elsayed - [@ahmadelsap3](https://github.com/ahmadelsap3)
 
 ---
-*Pipeline Status: ✅ Operational | Last Updated: December 2025*
+
+Project Status: Operational

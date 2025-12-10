@@ -4,15 +4,193 @@
   },
   "editable": true,
   "fiscalYearStartMonth": 0,
-  "graphTooltip": 1,
+  "graphTooltip": 0,
   "id": null,
-  "links": [],
-  "liveNow": true,
   "panels": [
     {
       "datasource": {
-        "type": "questdb-questdb-datasource",
-        "uid": "questdb"
+        "type": "postgres",
+        "uid": "timescaledb"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [
+            {
+              "options": {
+                "OPEN": {
+                  "color": "green",
+                  "text": "🟢 MARKET OPEN"
+                },
+                "CLOSED": {
+                  "color": "red",
+                  "text": "🔴 MARKET CLOSED"
+                }
+              },
+              "type": "value"
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
+            ]
+          }
+        }
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 6,
+        "x": 0,
+        "y": 0
+      },
+      "id": 1,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "values": true,
+          "calcs": ["lastNotNull"],
+          "fields": "/^market_status$/"
+        },
+        "textMode": "value",
+        "text": {
+          "titleSize": 20,
+          "valueSize": 30
+        }
+      },
+      "pluginVersion": "10.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "timescaledb"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT DISTINCT ON (market_status) market_status FROM egx_stock_prices ORDER BY market_status, time DESC LIMIT 1",
+          "refId": "A"
+        }
+      ],
+      "title": "Market Status",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "postgres",
+        "uid": "timescaledb"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "center",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Change %"
+            },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background"
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "thresholds"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "red",
+                      "value": null
+                    },
+                    {
+                      "color": "green",
+                      "value": 0
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 18,
+        "x": 6,
+        "y": 0
+      },
+      "id": 9,
+      "options": {
+        "cellHeight": "lg",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": ["sum"],
+          "show": false
+        },
+        "showHeader": true,
+        "sortBy": []
+      },
+      "pluginVersion": "10.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "timescaledb"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT DISTINCT ON (ticker) CASE ticker WHEN 'EGX100' THEN 'EGX100 EWI' WHEN 'EGX33SHARIA' THEN 'EGX33 (Sharia)' ELSE ticker END AS \"Index\", CAST(price AS NUMERIC(10,2)) || ' Points' as \"Value\", CAST(price_change_percent AS NUMERIC(10,2)) as \"Change %\" FROM egx_stock_prices WHERE ticker LIKE 'EGX%' ORDER BY ticker, time DESC",
+          "refId": "A"
+        }
+      ],
+      "title": "EGX Market Indices",
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "postgres",
+        "uid": "timescaledb"
       },
       "fieldConfig": {
         "defaults": {
@@ -20,38 +198,87 @@
             "mode": "palette-classic"
           },
           "custom": {
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
             "drawStyle": "line",
-            "lineWidth": 2,
             "fillOpacity": 10,
-            "showPoints": "never"
-          }
+            "gradientMode": "none",
+            "hideFrom": {
+              "tooltip": false,
+              "viz": false,
+              "legend": false
+            },
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "spanNulls": true,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "EGP"
         }
       },
       "gridPos": {
         "h": 10,
         "w": 24,
         "x": 0,
-        "y": 0
+        "y": 9
       },
-      "id": 1,
+      "id": 2,
+      "options": {
+        "legend": {
+          "calcs": ["lastNotNull", "mean"],
+          "displayMode": "table",
+          "placement": "right",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "10.0.0",
       "targets": [
         {
           "datasource": {
-            "type": "questdb-questdb-datasource",
-            "uid": "questdb"
+            "type": "postgres",
+            "uid": "timescaledb"
           },
-          "rawSql": "SELECT timestamp as time, price as value, company_name as metric FROM egx_stock_prices ORDER BY timestamp DESC LIMIT 500",
-          "refId": "A",
-          "format": "time_series"
+          "format": "time_series",
+          "rawQuery": true,
+          "rawSql": "SELECT time AS \"time\", price, ticker AS metric FROM egx_stock_prices WHERE time > NOW() - INTERVAL '30 minutes' ORDER BY time ASC",
+          "refId": "A"
         }
       ],
-      "title": "📈 EGX Stock Prices - Live",
+      "title": "EGX Stock Prices (30min)",
       "type": "timeseries"
     },
     {
       "datasource": {
-        "type": "questdb-questdb-datasource",
-        "uid": "questdb"
+        "type": "postgres",
+        "uid": "timescaledb"
       },
       "fieldConfig": {
         "defaults": {
@@ -59,307 +286,537 @@
             "mode": "thresholds"
           },
           "custom": {
-            "align": "center"
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false
           },
+          "mappings": [],
           "thresholds": {
             "mode": "absolute",
             "steps": [
-              {"color": "red", "value": null},
-              {"color": "yellow", "value": 0},
-              {"color": "green", "value": 1}
+              {
+                "color": "green",
+                "value": null
+              }
             ]
           }
         },
         "overrides": [
           {
-            "matcher": {"id": "byName", "options": "price_change_percent"},
+            "matcher": {
+              "id": "byName",
+              "options": "price_change_percent"
+            },
             "properties": [
-              {"id": "custom.cellOptions", "value": {"type": "color-background"}},
-              {"id": "decimals", "value": 2}
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background"
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "thresholds"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "displayName",
+                "value": "Change %"
+              }
             ]
-          }
-        ]
-      },
-      "gridPos": {
-        "h": 10,
-        "w": 12,
-        "x": 0,
-        "y": 10
-      },
-      "id": 2,
-      "targets": [
-        {
-          "datasource": {
-            "type": "questdb-questdb-datasource",
-            "uid": "questdb"
           },
-          "rawSql": "SELECT ticker, company_name, price, price_change, price_change_percent FROM egx_stock_prices WHERE timestamp = (SELECT MAX(timestamp) FROM egx_stock_prices) ORDER BY price_change_percent DESC LIMIT 10",
-          "refId": "A",
-          "format": "table"
-        }
-      ],
-      "title": "🚀 Top Gainers",
-      "type": "table"
-    },
-    {
-      "datasource": {
-        "type": "questdb-questdb-datasource",
-        "uid": "questdb"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "custom": {
-            "align": "center"
-          },
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {"color": "red", "value": null},
-              {"color": "yellow", "value": 0},
-              {"color": "green", "value": 1}
-            ]
-          }
-        },
-        "overrides": [
           {
-            "matcher": {"id": "byName", "options": "price_change_percent"},
+            "matcher": {
+              "id": "byName",
+              "options": "company_name"
+            },
             "properties": [
-              {"id": "custom.cellOptions", "value": {"type": "color-background"}},
-              {"id": "decimals", "value": 2}
+              {
+                "id": "displayName",
+                "value": "Company Name"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "ticker"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Symbol"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "price"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Price"
+              }
             ]
           }
         ]
-      },
-      "gridPos": {
-        "h": 10,
-        "w": 12,
-        "x": 12,
-        "y": 10
-      },
-      "id": 3,
-      "targets": [
-        {
-          "datasource": {
-            "type": "questdb-questdb-datasource",
-            "uid": "questdb"
-          },
-          "rawSql": "SELECT ticker, company_name, price, price_change, price_change_percent FROM egx_stock_prices WHERE timestamp = (SELECT MAX(timestamp) FROM egx_stock_prices) ORDER BY price_change_percent ASC LIMIT 10",
-          "refId": "A",
-          "format": "table"
-        }
-      ],
-      "title": "📉 Top Losers",
-      "type": "table"
-    },
-    {
-      "datasource": {
-        "type": "questdb-questdb-datasource",
-        "uid": "questdb"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "thresholds"
-          }
-        }
       },
       "gridPos": {
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 20
+        "y": 19
       },
-      "id": 4,
+      "id": 3,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": ["sum"],
+          "show": false
+        },
+        "showHeader": true
+      },
+      "pluginVersion": "10.0.0",
       "targets": [
         {
           "datasource": {
-            "type": "questdb-questdb-datasource",
-            "uid": "questdb"
+            "type": "postgres",
+            "uid": "timescaledb"
           },
-          "rawSql": "SELECT ticker, company_name, volume FROM egx_stock_prices WHERE timestamp = (SELECT MAX(timestamp) FROM egx_stock_prices) ORDER BY volume DESC LIMIT 10",
-          "refId": "A",
-          "format": "table"
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "WITH latest AS (SELECT DISTINCT ON (ticker) ticker, company_name, price, price_change_percent FROM egx_stock_prices WHERE ticker NOT LIKE 'EGX%' ORDER BY ticker, time DESC) SELECT company_name, ticker, price, price_change_percent FROM latest ORDER BY price_change_percent DESC LIMIT 10",
+          "refId": "A"
         }
       ],
-      "title": "💹 Most Active (by Volume)",
+      "title": "Top 10 Gainers",
       "type": "table"
     },
     {
       "datasource": {
-        "type": "questdb-questdb-datasource",
-        "uid": "questdb"
+        "type": "postgres",
+        "uid": "timescaledb"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "price_change_percent"
+            },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background"
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "thresholds"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "red",
+                      "value": null
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "displayName",
+                "value": "Change %"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "company_name"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Company Name"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "ticker"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Symbol"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "price"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Price"
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 19
+      },
+      "id": 4,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": ["sum"],
+          "show": false
+        },
+        "showHeader": true
+      },
+      "pluginVersion": "10.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "timescaledb"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "WITH latest AS (SELECT DISTINCT ON (ticker) ticker, company_name, price, price_change_percent FROM egx_stock_prices WHERE ticker NOT LIKE 'EGX%' ORDER BY ticker, time DESC) SELECT company_name, ticker, price, price_change_percent FROM latest ORDER BY price_change_percent ASC LIMIT 10",
+          "refId": "A"
+        }
+      ],
+      "title": "Top 10 Losers",
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "postgres",
+        "uid": "timescaledb"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        }
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 4,
+        "x": 0,
+        "y": 27
+      },
+      "id": 5,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "values": false,
+          "calcs": ["lastNotNull"],
+          "fields": ""
+        },
+        "textMode": "auto"
+      },
+      "pluginVersion": "10.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "timescaledb"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT COUNT(DISTINCT ticker) FROM egx_stock_prices WHERE time > NOW() - INTERVAL '5 minutes'",
+          "refId": "A"
+        }
+      ],
+      "title": "Active Stocks",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "postgres",
+        "uid": "timescaledb"
       },
       "fieldConfig": {
         "defaults": {
           "color": {
             "mode": "palette-classic"
+          },
+          "custom": {
+            "hideFrom": {
+              "tooltip": false,
+              "viz": false,
+              "legend": false
+            }
+          },
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 10,
+        "x": 4,
+        "y": 27
+      },
+      "id": 6,
+      "options": {
+        "displayLabels": ["percent"],
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "showLegend": true,
+          "values": ["value", "percent"]
+        },
+        "pieType": "pie",
+        "reduceOptions": {
+          "values": false,
+          "fields": "",
+          "calcs": ["lastNotNull"]
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "10.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "timescaledb"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "WITH latest AS (SELECT DISTINCT ON (ticker) ticker, company_name, volume FROM egx_stock_prices WHERE ticker NOT LIKE 'EGX%' AND time > NOW() - INTERVAL '5 minutes' ORDER BY ticker, time DESC) SELECT company_name, volume FROM latest WHERE volume > 0 ORDER BY volume DESC LIMIT 10",
+          "refId": "A"
+        }
+      ],
+      "title": "Top 10 Trading Volume",
+      "transformations": [
+        {
+          "id": "rowsToFields",
+          "options": {
+            "mappings": [
+              {
+                "fieldName": "company_name",
+                "handlerKey": "field.name"
+              },
+              {
+                "fieldName": "volume",
+                "handlerKey": "field.value"
+              }
+            ]
           }
+        }
+      ],
+      "type": "piechart"
+    },
+    {
+      "datasource": {
+        "type": "postgres",
+        "uid": "timescaledb"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "EGP"
         }
       },
       "gridPos": {
         "h": 8,
-        "w": 12,
-        "x": 12,
-        "y": 20
-      },
-      "id": 5,
-      "targets": [
-        {
-          "datasource": {
-            "type": "questdb-questdb-datasource",
-            "uid": "questdb"
-          },
-          "rawSql": "SELECT company_name as metric, price * volume as value FROM egx_stock_prices WHERE timestamp = (SELECT MAX(timestamp) FROM egx_stock_prices) ORDER BY value DESC LIMIT 10",
-          "refId": "A",
-          "format": "table"
-        }
-      ],
-      "title": "🥧 Market Value Distribution",
-      "type": "piechart",
-      "options": {
-        "displayLabels": ["name", "percent"],
-        "legend": {"displayMode": "table", "placement": "right"},
-        "pieType": "pie"
-      }
-    },
-    {
-      "datasource": {
-        "type": "questdb-questdb-datasource",
-        "uid": "questdb"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {"mode": "thresholds"}
-        }
-      },
-      "gridPos": {
-        "h": 4,
-        "w": 6,
-        "x": 0,
-        "y": 28
-      },
-      "id": 6,
-      "targets": [
-        {
-          "datasource": {
-            "type": "questdb-questdb-datasource",
-            "uid": "questdb"
-          },
-          "rawSql": "SELECT COUNT(DISTINCT ticker) as value FROM egx_stock_prices",
-          "refId": "A",
-          "format": "table"
-        }
-      ],
-      "title": "📊 Total Stocks",
-      "type": "stat"
-    },
-    {
-      "datasource": {
-        "type": "questdb-questdb-datasource",
-        "uid": "questdb"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {"mode": "thresholds"},
-          "unit": "percent"
-        }
-      },
-      "gridPos": {
-        "h": 4,
-        "w": 6,
-        "x": 6,
-        "y": 28
+        "w": 5,
+        "x": 14,
+        "y": 27
       },
       "id": 7,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "values": false,
+          "calcs": ["mean"],
+          "fields": ""
+        },
+        "textMode": "auto"
+      },
+      "pluginVersion": "10.0.0",
       "targets": [
         {
           "datasource": {
-            "type": "questdb-questdb-datasource",
-            "uid": "questdb"
+            "type": "postgres",
+            "uid": "timescaledb"
           },
-          "rawSql": "SELECT AVG(price_change_percent) as value FROM egx_stock_prices WHERE timestamp = (SELECT MAX(timestamp) FROM egx_stock_prices)",
-          "refId": "A",
-          "format": "table"
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT AVG(price) FROM egx_stock_prices WHERE time > NOW() - INTERVAL '5 minutes'",
+          "refId": "A"
         }
       ],
-      "title": "📈 Average Market Change",
+      "title": "Average Price",
       "type": "stat"
     },
     {
       "datasource": {
-        "type": "questdb-questdb-datasource",
-        "uid": "questdb"
+        "type": "postgres",
+        "uid": "timescaledb"
       },
       "fieldConfig": {
         "defaults": {
-          "color": {"mode": "thresholds"},
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
           "unit": "short"
         }
       },
       "gridPos": {
-        "h": 4,
-        "w": 6,
-        "x": 12,
-        "y": 28
+        "h": 8,
+        "w": 5,
+        "x": 19,
+        "y": 27
       },
       "id": 8,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "values": false,
+          "calcs": ["sum"],
+          "fields": ""
+        },
+        "textMode": "auto"
+      },
+      "pluginVersion": "10.0.0",
       "targets": [
         {
           "datasource": {
-            "type": "questdb-questdb-datasource",
-            "uid": "questdb"
+            "type": "postgres",
+            "uid": "timescaledb"
           },
-          "rawSql": "SELECT SUM(volume) as value FROM egx_stock_prices WHERE timestamp = (SELECT MAX(timestamp) FROM egx_stock_prices)",
-          "refId": "A",
-          "format": "table"
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT SUM(volume) FROM egx_stock_prices WHERE time > NOW() - INTERVAL '5 minutes'",
+          "refId": "A"
         }
       ],
-      "title": "💰 Total Trading Volume",
-      "type": "stat"
-    },
-    {
-      "datasource": {
-        "type": "questdb-questdb-datasource",
-        "uid": "questdb"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {"mode": "thresholds"}
-        }
-      },
-      "gridPos": {
-        "h": 4,
-        "w": 6,
-        "x": 18,
-        "y": 28
-      },
-      "id": 9,
-      "targets": [
-        {
-          "datasource": {
-            "type": "questdb-questdb-datasource",
-            "uid": "questdb"
-          },
-          "rawSql": "SELECT COUNT(*) as value FROM egx_stock_prices",
-          "refId": "A",
-          "format": "table"
-        }
-      ],
-      "title": "🗄️ Total Data Points",
+      "title": "Total Volume",
       "type": "stat"
     }
   ],
-  "refresh": "10s",
+  "refresh": "5s",
   "schemaVersion": 38,
   "style": "dark",
-  "tags": ["egx", "stocks", "egypt"],
-  "templating": {"list": []},
-  "time": {"from": "now-1h", "to": "now"},
+  "tags": ["egx", "stocks"],
+  "templating": {
+    "list": []
+  },
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  },
+  "timepicker": {},
   "timezone": "",
-  "title": "🇪🇬 Egyptian Exchange (EGX) - Live Market",
+  "title": "EGX Live Market Dashboard",
   "uid": "egx-live",
-  "version": 1
+  "version": 0
 }
+
+
