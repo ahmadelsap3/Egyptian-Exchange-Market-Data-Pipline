@@ -8,17 +8,14 @@ RUN apt-get update && \
 
 USER airflow
 
+# Copy requirements and install dependencies
+COPY requirements.txt /requirements.txt
+RUN pip install --no-cache-dir -r /requirements.txt
+
 # Install egxpy with all its dependencies (may upgrade airflow)
 RUN pip install --no-cache-dir \
     git+https://github.com/egxlytics/egxpy.git
 
-# Install additional packages
-RUN pip install --no-cache-dir \
-    kafka-python \
-    boto3 \
-    influxdb-client \
-    snowflake-connector-python \
-    apache-airflow-providers-snowflake
 
 # Force reinstall airflow 2.9.0 with its constraints (this will also install compatible providers)
 RUN pip install --force-reinstall --no-cache-dir \
