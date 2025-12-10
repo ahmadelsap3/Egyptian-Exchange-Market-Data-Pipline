@@ -1,16 +1,8 @@
 """
-Bronze Layer Ingestion Script (Variant/JSON Mode)
+Bronze Layer Ingestion Script (Variant/JSON Mode) - TEST VERSION
 Loads raw CSV data from S3 into Snowflake VARIANT columns.
 
-Target Schema:
-- FILE_NAME (VARCHAR)
-- LOAD_TS (TIMESTAMP_NTZ)
-- RAW (VARIANT - JSON content of the row)
-
-Target Tables:
-- COMPANIES_RAW
-- PRICES_RAW
-- FINANCE_RAW
+Target Database: EGYPTIAN_STOCKS_TEST
 """
 
 import boto3
@@ -32,13 +24,13 @@ AWS_ACCESS_KEY = os.getenv('AWS_ACCESS_KEY_ID')
 AWS_SECRET_KEY = os.getenv('AWS_SECRET_ACCESS_KEY')
 BUCKET_NAME = 'egx-data-bucket'
 
-# Snowflake Configuration
+# Snowflake Configuration - OVERRIDDEN FOR TEST
 SNOWFLAKE_CONFIG = {
     'account': os.getenv('SNOWFLAKE_ACCOUNT', 'LPDTDON-IU51056'),
     'user': os.getenv('SNOWFLAKE_USER', 'AHMEDEHAB'),
     'password': os.getenv('SNOWFLAKE_PASSWORD'),
     'warehouse': 'COMPUTE_WH',
-    'database': os.getenv('EGYPTIAN_STOCKS', 'EGYPTIAN_STOCKS'),
+    'database': 'EGYPTIAN_STOCKS_TEST', # <--- OVERRIDE
     'schema': os.getenv('BRONZE_SCHEMA_NAME', 'BRONZE')
 }
 
@@ -77,6 +69,31 @@ def get_loaded_files(cursor, table_name):
     except Exception as e:
         # Table might not exist or other error
         return set()
+
+def create_test_tables_if_not_exist(conn):
+    """Ensure test tables exist before loading"""
+    cursor = conn.cursor()
+    try:
+        print("\n🛠️ Ensuring Test Tables Exist...")
+        cursor.execute(f"CREATE DATABASE IF NOT EXISTS {SNOWFLAKE_CONFIG['database']}")
+        cursor.execute(f"USE DATABASE {SNOWFLAKE_CONFIG['database']}")
+        cursor.execute(f"CREATE SCHEMA IF NOT EXISTS {SNOWFLAKE_CONFIG['schema']}")
+        cursor.execute(f"USE SCHEMA {SNOWFLAKE_CONFIG['schema']}")
+
+        tables = {
+            "COMPANIES_RAW": "(FILE_NAME VARCHAR, LOAD_TS TIMESTAMP_NTZ, RAW VARIANT)",
+            "PRICES_RAW": "(FILE_NAME VARCHAR, LOAD_TS TIMESTAMP_NTZ, RAW VARIANT)",
+            "FINANCE_RAW": "(FILE_NAME VARCHAR, LOAD_TS TIMESTAMP_NTZ, RAW VARIANT)"
+        }
+        
+        for table, schema in tables.items():
+            cursor.execute(f"CREATE TABLE IF NOT EXISTS {table} {schema}")
+            print(f"  ✓ {table} ready")
+            
+    except Exception as e:
+        print(f"❌ Setup Error: {e}")
+    finally:
+        cursor.close()
 
 
 
@@ -243,11 +260,10 @@ def load_financials_raw(s3_client, conn, batch_ts):
                 s3_obj = s3_client.get_object(Bucket=BUCKET_NAME, Key=key)
                 df = pd.read_csv(io.BytesIO(s3_obj['Body'].read()), dtype=str)
                 
-                if df.empty:
-                    print(f"  ⚠️ Warning: {key} is EMPTY. Skipping.")
+                if df.empty: # Check if DataFrame is empty
                     skipped_empty += 1
-                    continue
-
+                    continue # Skip to the next file
+                
                 symbol = key.split('/')[-1].replace('_finance.csv', '').strip().upper()
                 
                 for _, row in df.iterrows():
@@ -276,7 +292,9 @@ def load_financials_raw(s3_client, conn, batch_ts):
     cursor.close()
 
 def main():
-    print("🚀 BRONZE RAW (JSON) LOADER")
+    print("🚀 BRONZE RAW (JSON) LOADER - TEST VER")
+    print(f"Target DB: {SNOWFLAKE_CONFIG['database']}")
+    
     s3_client = boto3.client(
         's3',
         aws_access_key_id=AWS_ACCESS_KEY,
@@ -288,6 +306,7 @@ def main():
     
 
     try:
+        create_test_tables_if_not_exist(conn)
         load_companies_raw(s3_client, conn, batch_ts)
         load_prices_raw(s3_client, conn, batch_ts)
         load_financials_raw(s3_client, conn, batch_ts)
