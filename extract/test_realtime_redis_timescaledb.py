@@ -86,7 +86,8 @@ class TestRedisTimescaleDBHandler(unittest.TestCase):
     
     def test_flush_to_db_empty_buffer(self):
         """Test flushing when buffer is empty."""
-        self.mock_redis_client.llen.return_value = 0
+        # Mock eval to return empty list
+        self.mock_redis_client.eval.return_value = []
         
         records_inserted = self.handler.flush_to_db()
         
@@ -108,11 +109,8 @@ class TestRedisTimescaleDBHandler(unittest.TestCase):
             'volume': 5000
         }
         
-        # Mock llen to return buffer size
-        self.mock_redis_client.llen.return_value = 2
-        
-        # Mock lrange to return ticks
-        self.mock_redis_client.lrange.return_value = [
+        # Mock eval to return ticks (Lua script reads and clears atomically)
+        self.mock_redis_client.eval.return_value = [
             json.dumps(tick1),
             json.dumps(tick2)
         ]
@@ -131,8 +129,8 @@ class TestRedisTimescaleDBHandler(unittest.TestCase):
             self.mock_pg_conn.commit.assert_called_once()
             # Verify execute_batch was called
             mock_execute_batch.assert_called_once()
-            # Verify ltrim was called to remove processed items
-            self.mock_redis_client.ltrim.assert_called_once_with(REDIS_LIST_KEY, 2, -1)
+            # Verify eval was called (atomic read-and-clear)
+            self.mock_redis_client.eval.assert_called_once()
     
     def test_data_validation(self):
         """Test that tick data is properly validated."""

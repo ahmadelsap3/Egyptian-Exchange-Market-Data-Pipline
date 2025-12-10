@@ -22,7 +22,7 @@ Stock Ticks → Redis Buffer → Batch Flush → TimescaleDB (Hypertable)
 
 - ✅ Fast in-memory buffering using Redis lists
 - ✅ Efficient batch insertion to TimescaleDB
-- ✅ Atomic flush operations (prevents race conditions)
+- ✅ Truly atomic flush operations using Redis Lua scripts (eliminates race conditions)
 - ✅ Automatic hypertable creation and partitioning
 - ✅ Resilient error handling (restores buffer on flush failure with proper ordering)
 - ✅ Daemon mode with automatic periodic flushing

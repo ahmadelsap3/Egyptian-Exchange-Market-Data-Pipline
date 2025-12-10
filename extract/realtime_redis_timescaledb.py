@@ -196,27 +196,32 @@ class RedisTimescaleDBHandler:
     def flush_to_db(self) -> int:
         """
         Flush all buffered ticks from Redis to TimescaleDB in a batch operation.
+        Uses Redis Lua script for atomic read-and-clear operation.
         
         Returns:
             Number of records inserted
         """
         cursor = self.pg_conn.cursor()
         records_inserted = 0
+        ticks = []  # Initialize to avoid UnboundLocalError
         
         try:
-            # Atomically get all buffered ticks from Redis using LRANGE + LTRIM
-            # This prevents race conditions with concurrent buffer_tick() calls
-            buffer_size = self.redis_client.llen(REDIS_LIST_KEY)
+            # Use Lua script for atomic read-and-clear operation
+            # This prevents race conditions and ensures all items are read before clearing
+            lua_script = """
+            local items = redis.call('LRANGE', KEYS[1], 0, -1)
+            if #items > 0 then
+                redis.call('DEL', KEYS[1])
+            end
+            return items
+            """
             
-            if buffer_size == 0:
+            # Execute Lua script atomically
+            tick_jsons = self.redis_client.eval(lua_script, 1, REDIS_LIST_KEY)
+            
+            if not tick_jsons:
                 LOG.info("No ticks to flush")
                 return 0
-            
-            # Get all items from the list
-            tick_jsons = self.redis_client.lrange(REDIS_LIST_KEY, 0, buffer_size - 1)
-            
-            # Remove the items we just read (atomic operation)
-            self.redis_client.ltrim(REDIS_LIST_KEY, buffer_size, -1)
             
             # Parse the ticks
             ticks = []
@@ -252,15 +257,16 @@ class RedisTimescaleDBHandler:
             
             # Restore ticks to Redis in reverse order to maintain chronological order
             # Since we read from left (oldest first), we push back to left to maintain order
-            try:
-                for tick in reversed(ticks):
-                    self.redis_client.lpush(REDIS_LIST_KEY, json.dumps(tick))
-                LOG.info(f"Restored {len(ticks)} ticks back to Redis buffer")
-            except redis.RedisError as redis_err:
-                LOG.critical(f"✗ Failed to restore ticks to Redis: {redis_err}")
-                LOG.critical(f"Data loss alert: {len(ticks)} ticks could not be restored")
-                # Log the lost ticks for potential recovery
-                LOG.critical(f"Lost ticks: {json.dumps(ticks)}")
+            if ticks:  # Only restore if ticks were successfully parsed
+                try:
+                    for tick in reversed(ticks):
+                        self.redis_client.lpush(REDIS_LIST_KEY, json.dumps(tick))
+                    LOG.info(f"Restored {len(ticks)} ticks back to Redis buffer")
+                except redis.RedisError as redis_err:
+                    LOG.critical(f"✗ Failed to restore ticks to Redis: {redis_err}")
+                    LOG.critical(f"Data loss alert: {len(ticks)} ticks could not be restored")
+                    # Log the lost ticks for potential recovery
+                    LOG.critical(f"Lost ticks: {json.dumps(ticks)}")
             
             raise
         finally:
