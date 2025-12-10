@@ -58,6 +58,11 @@ def determine_run_type(**context):
     
     print(f"⏰ Execution time: {exec_time.strftime('%Y-%m-%d %H:%M')} ({exec_time.strftime('%A')})")
     
+    # Allow manual override for testing
+    if context.get('dag_run') and context['dag_run'].conf.get('force_daily'):
+        print("⚡ MANUAL OVERRIDE: Forcing Daily Pipeline")
+        return 'start_daily_pipeline'
+    
     # Saturday maintenance (2:00 AM)
     if weekday == 5 and hour == 2 and minute == 0:
         print("🔧 Running: WEEKLY MAINTENANCE")
