@@ -1,0 +1,127 @@
+# version: 2
+
+# sources:
+#     - name: bronze # <-- This is the name used in the 'source' function: source('bronze', ...)
+#       database: EGYPTIAN_STOCKS # <-- Your actual database name
+#       schema: BRONZE # <-- Your actual schema name
+
+#       tables:
+#           - name: COMPANIES_RAW # <-- This is the table name used in the 'source' function: source(..., 'companies_raw')
+#             description: Raw data for company information.
+
+#           - name: FINANCE_RAW # <-- Add any other raw tables you need!
+#             description: Raw stock finance data.
+
+#           - name: PRICES_RAW # <-- Add any other raw tables you need!
+#             description: Raw stock price data.
+
+# models:
+#     - name: stg_companies
+#       columns:
+#           - name: symbol
+#             tests:
+#                 - not_null
+#                 - unique
+
+#     - name: stg_prices
+#       columns:
+#           - name: symbol
+#             tests:
+#                 - not_null
+#           - name: date
+#             tests:
+#                 - not_null
+
+version: 2
+
+models:
+  # ----------------------------------------------------
+  - name: stg_companies
+    description: "Cleansed and prepared data for company meta information."
+    columns:
+      - name: symbol
+        description: "The unique ticker symbol for the company."
+        tests:
+          - unique
+          - not_null
+      - name: company_name
+        description: "The official name of the listed company."
+        tests:
+          - not_null
+      - name: currency
+        tests:
+          - not_null
+      - name: sector
+        tests:
+          - not_null
+      - name: industry
+        tests:
+          - not_null
+      - name: isin
+        description: "International Securities Identification Number (Unique identifier)."
+        tests:
+          - unique
+          - not_null
+      - name: file_name
+        tests:
+          - not_null
+
+  # ----------------------------------------------------
+  - name: stg_finance
+    description: "Cleansed and prepared data for quarterly financial reports."
+    columns:
+      - name: symbol
+        tests:
+          - not_null
+      - name: quarter_date
+        description: "The starting date of the reported quarter (normalized)."
+        tests:
+          - not_null
+      - name: total_revenue
+        tests:
+          - dbt_expectations.expect_column_to_be_positive # يحتاج تنزيل package dbt_expectations
+      - name: total_assets
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_to_be_positive
+      - name: total_liabilities
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_to_be_positive
+    
+    tests:
+      - dbt_utils.unique_combination_of_columns: # يحتاج تنزيل package dbt_utils
+          combination_of_columns:
+            - symbol
+            - quarter_date
+
+  # ----------------------------------------------------
+  
+  - name: stg_prices
+    description: "Cleansed and prepared data for daily stock prices and volume."
+    columns:
+      - name: symbol
+        tests:
+          - not_null
+      - name: date
+        tests:
+          - not_null
+          - dbt_expectations.expect_row_values_to_have_recent_data 
+      - name: open
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_to_be_positive
+      - name: close
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_to_be_positive
+      - name: volume
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_to_be_positive
+    
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          combination_of_columns:
+            - symbol
+            - date
