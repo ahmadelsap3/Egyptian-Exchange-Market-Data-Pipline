@@ -4,18 +4,26 @@
   )
 }}
 
--- Staging for company master data with enrichments and null handling
+-- Staging for company master data from RAW JSON
+WITH source AS (
+    SELECT 
+        RAW:symbol::STRING as symbol,
+        RAW:company_name::STRING as company_name,
+        RAW:sector::STRING as sector,
+        RAW:market_cap::FLOAT as market_cap,
+        RAW:logo_url::STRING as logo_url,
+        LOAD_TS as created_at
+    FROM {{ source('operational', 'COMPANIES_RAW') }}
+)
+
 SELECT 
-    company_id,
-    COALESCE(symbol, 'UNKNOWN') as symbol,
+    symbol,
     COALESCE(company_name, 'Unknown Company') as company_name,
     COALESCE(sector, 'Unclassified') as sector,
-    COALESCE(industry, 'Unknown') as industry,
     COALESCE(market_cap, 0) as market_cap,
     logo_url,
-    COALESCE(analyst_rating, 'Not Rated') as analyst_rating,
-    COALESCE(is_active, TRUE) as is_active,
     created_at,
-    updated_at
-FROM {{ source('operational', 'TBL_COMPANY') }}
+    CURRENT_TIMESTAMP() as updated_at
+FROM source
 WHERE symbol IS NOT NULL
+QUALIFY ROW_NUMBER() OVER (PARTITION BY symbol ORDER BY created_at DESC) = 1

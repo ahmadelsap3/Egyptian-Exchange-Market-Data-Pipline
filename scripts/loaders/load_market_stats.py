@@ -20,7 +20,7 @@ SNOWFLAKE_CONFIG = {
     'user': os.getenv('SNOWFLAKE_USER', 'AHMEDEHAB'),
     'password': os.getenv('SNOWFLAKE_PASSWORD'),
     'warehouse': 'COMPUTE_WH',
-    'database': 'EGX_OPERATIONAL_DB'
+    'database': 'EGYPTIAN_STOCKS'
 }
 
 def parse_volume(vol_str):
@@ -181,6 +181,7 @@ def main():
     companies_with_sector = cursor.fetchone()[0]
     print(f"✓ Updated {companies_with_sector} companies with sector information")
     
+    conn.commit()
     cursor.close()
     conn.close()
     

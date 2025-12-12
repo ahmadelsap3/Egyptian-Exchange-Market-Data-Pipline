@@ -8,7 +8,7 @@ egx_dw:
       password: "{{ env_var('SNOWFLAKE_PASSWORD') }}"
       role: ACCOUNTADMIN
       warehouse: COMPUTE_WH
-      database: EGX_OPERATIONAL_DB
-      schema: DWH_SILVER
+      database: EGYPTIAN_STOCKS
+      schema: staging
       threads: 4
       client_session_keep_alive: false

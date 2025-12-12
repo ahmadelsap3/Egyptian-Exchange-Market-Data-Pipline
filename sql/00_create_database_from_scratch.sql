@@ -4,9 +4,9 @@
 -- ============================================================================
 
 -- Drop and recreate database
-DROP DATABASE IF EXISTS EGX_OPERATIONAL_DB;
-CREATE DATABASE EGX_OPERATIONAL_DB;
-USE DATABASE EGX_OPERATIONAL_DB;
+DROP DATABASE IF EXISTS EGYPTIAN_STOCKS;
+CREATE DATABASE EGYPTIAN_STOCKS;
+USE DATABASE EGYPTIAN_STOCKS;
 
 -- Create schemas
 CREATE SCHEMA IF NOT EXISTS STAGING;      -- Raw data landing

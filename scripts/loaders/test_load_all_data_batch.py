@@ -312,6 +312,7 @@ def main():
         load_financials_raw(s3_client, conn, batch_ts)
         
         print("\n✅ Load Complete")
+        conn.commit()
     finally:
         conn.close()
 

@@ -35,7 +35,7 @@ def get_snowflake_connection():
         user=os.getenv('SNOWFLAKE_USER'),
         password=os.getenv('SNOWFLAKE_PASSWORD'),
         warehouse=os.getenv('SNOWFLAKE_WAREHOUSE', 'COMPUTE_WH'),
-        database='EGX_OPERATIONAL_DB',
+        database='EGYPTIAN_STOCKS',
         schema='OPERATIONAL'
     )
 

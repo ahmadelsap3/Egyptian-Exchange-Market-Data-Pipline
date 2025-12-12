@@ -20,7 +20,7 @@ SNOWFLAKE_CONFIG = {
     'user': os.getenv('SNOWFLAKE_USER', 'AHMEDEHAB'),
     'password': os.getenv('SNOWFLAKE_PASSWORD'),
     'warehouse': 'COMPUTE_WH',
-    'database': 'EGX_OPERATIONAL_DB'
+    'database': 'EGYPTIAN_STOCKS'
 }
 
 def main():
@@ -169,6 +169,7 @@ def main():
             for member in members:
                 print(f"    • {member[0]}")
     
+    conn.commit()
     cursor.close()
     conn.close()
     

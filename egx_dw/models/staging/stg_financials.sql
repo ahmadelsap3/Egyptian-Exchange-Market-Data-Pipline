@@ -5,10 +5,31 @@
   )
 }}
 
--- Staging for financial statements with company info and null handling
+-- Staging for financial statements from FINANCE_RAW (JSON) joined with stg_companies
+WITH financials AS (
+    SELECT
+        RAW:_ingest_symbol::STRING as symbol,
+        RAW:quarter::DATE as quarter,
+        RAW:fiscal_year::INTEGER as fiscal_year,
+        RAW:fiscal_quarter::INTEGER as fiscal_quarter,
+        RAW:total_revenue::FLOAT as total_revenue,
+        RAW:gross_profit::FLOAT as gross_profit,
+        RAW:net_income::FLOAT as net_income,
+        RAW:eps::FLOAT as eps,
+        RAW:operating_expense::FLOAT as operating_expense,
+        RAW:total_assets::FLOAT as total_assets,
+        RAW:total_liabilities::FLOAT as total_liabilities,
+        RAW:free_cash_flow::FLOAT as free_cash_flow,
+        LOAD_TS as ingested_at
+    FROM {{ source('operational', 'FINANCE_RAW') }}
+),
+
+companies AS (
+    SELECT * FROM {{ ref('stg_companies') }}
+)
+
 SELECT 
-    f.financial_id,
-    f.company_id,
+    -- surrogate key generation could happen here if needed, but using natural keys for now
     c.symbol,
     c.company_name,
     c.sector,
@@ -41,12 +62,11 @@ SELECT
         THEN f.total_assets / f.total_liabilities
         ELSE NULL
     END as debt_to_asset_ratio,
-    f.created_at as ingested_at,
+    f.ingested_at,
     CURRENT_TIMESTAMP() as updated_at
-FROM {{ source('operational', 'TBL_FINANCIAL') }} f
-INNER JOIN {{ source('operational', 'TBL_COMPANY') }} c 
-    ON f.company_id = c.company_id
+FROM financials f
+LEFT JOIN companies c ON f.symbol = c.symbol
 WHERE f.quarter IS NOT NULL
 {% if is_incremental() %}
-  AND f.created_at > (SELECT COALESCE(MAX(ingested_at), '1900-01-01'::timestamp) FROM {{ this }})
+  AND f.ingested_at > (SELECT COALESCE(MAX(ingested_at), '1900-01-01'::timestamp) FROM {{ this }})
 {% endif %}

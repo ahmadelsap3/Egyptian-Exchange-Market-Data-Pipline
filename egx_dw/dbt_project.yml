@@ -32,13 +32,15 @@ models:
     # Staging layer - Silver: Clean and unify Bronze data
     staging:
       +materialized: incremental
-      +schema: DWH_SILVER
+      +database: EGYPTIAN_STOCKS
+      +schema: staging
       +on_schema_change: sync_all_columns
       
     # Marts layer - Gold: Analytics-ready dimensional models
     marts:
       +materialized: table
-      +schema: DWH_GOLD
+      +database: EGYPTIAN_STOCKS
+      +schema: silver
 
 vars:
   # Data source configurations

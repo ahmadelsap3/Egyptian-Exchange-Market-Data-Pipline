@@ -1,7 +1,7 @@
 {% macro cleanup_old_schemas() %}
   {% set drop_queries = [
-    "DROP SCHEMA IF EXISTS EGX_OPERATIONAL_DB.SILVER_silver CASCADE",
-    "DROP SCHEMA IF EXISTS EGX_OPERATIONAL_DB.SILVER_gold CASCADE"
+    "DROP SCHEMA IF EXISTS EGYPTIAN_STOCKS.SILVER_silver CASCADE",
+    "DROP SCHEMA IF EXISTS EGYPTIAN_STOCKS.SILVER_gold CASCADE"
   ] %}
   
   {% for query in drop_queries %}

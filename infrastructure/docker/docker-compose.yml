@@ -44,6 +44,7 @@ services:
             SNOWFLAKE_WAREHOUSE: ${SNOWFLAKE_WAREHOUSE}
             SNOWFLAKE_DATABASE: ${SNOWFLAKE_DATABASE}
             SNOWFLAKE_SCHEMA: ${SNOWFLAKE_SILVER_SCHEMA}
+            AIRFLOW_CONN_SNOWFLAKE_DEFAULT: snowflake://${SNOWFLAKE_USER}:${SNOWFLAKE_PASSWORD}@${SNOWFLAKE_ACCOUNT}/EGYPTIAN_STOCKS/BRONZE?warehouse=${SNOWFLAKE_WAREHOUSE}&role=${SNOWFLAKE_ROLE}
         volumes:
             - ../../airflow/dags:/opt/airflow/dags
             - ../../airflow/logs:/opt/airflow/logs
@@ -79,18 +80,20 @@ services:
             SNOWFLAKE_USER: ${SNOWFLAKE_USER}
             SNOWFLAKE_PASSWORD: ${SNOWFLAKE_PASSWORD}
             SNOWFLAKE_WAREHOUSE: ${SNOWFLAKE_WAREHOUSE:-COMPUTE_WH}
-            SNOWFLAKE_DATABASE: ${SNOWFLAKE_DATABASE:-EGX_OPERATIONAL_DB}
+            SNOWFLAKE_DATABASE: ${SNOWFLAKE_DATABASE:-EGYPTIAN_STOCKS}
             SNOWFLAKE_ROLE: ${SNOWFLAKE_ROLE:-SYSADMIN}
             SNOWFLAKE_SCHEMA: ${SNOWFLAKE_SILVER_SCHEMA}
+            AIRFLOW_CONN_SNOWFLAKE_DEFAULT: snowflake://${SNOWFLAKE_USER}:${SNOWFLAKE_PASSWORD}@${SNOWFLAKE_ACCOUNT}/EGYPTIAN_STOCKS/BRONZE?warehouse=${SNOWFLAKE_WAREHOUSE}&role=${SNOWFLAKE_ROLE}
         volumes:
             - ../../airflow/dags:/opt/airflow/dags
             - ../../airflow/logs:/opt/airflow/logs
             - ../../airflow/plugins:/opt/airflow/plugins
             - ../../extract:/opt/extract
-            - ../../streaming:/opt/streaming
+            - ../../egx_streaming_pipeline:/opt/streaming
             - ../../infrastructure:/opt/infrastructure
             - /var/run/docker.sock:/var/run/docker.sock
             - ../../scripts:/opt/airflow/scripts
+            - ../../egx_dw:/opt/airflow/egx_dw
         networks:
             - de-network
         ports:
@@ -125,18 +128,20 @@ services:
             SNOWFLAKE_USER: ${SNOWFLAKE_USER}
             SNOWFLAKE_PASSWORD: ${SNOWFLAKE_PASSWORD}
             SNOWFLAKE_WAREHOUSE: ${SNOWFLAKE_WAREHOUSE:-COMPUTE_WH}
-            SNOWFLAKE_DATABASE: ${SNOWFLAKE_DATABASE:-EGX_OPERATIONAL_DB}
+            SNOWFLAKE_DATABASE: ${SNOWFLAKE_DATABASE:-EGYPTIAN_STOCKS}
             SNOWFLAKE_ROLE: ${SNOWFLAKE_ROLE:-SYSADMIN}
             SNOWFLAKE_SCHEMA: ${SNOWFLAKE_SILVER_SCHEMA}
+            AIRFLOW_CONN_SNOWFLAKE_DEFAULT: snowflake://${SNOWFLAKE_USER}:${SNOWFLAKE_PASSWORD}@${SNOWFLAKE_ACCOUNT}/EGYPTIAN_STOCKS/BRONZE?warehouse=${SNOWFLAKE_WAREHOUSE}&role=${SNOWFLAKE_ROLE}
         volumes:
             - ../../airflow/dags:/opt/airflow/dags
             - ../../airflow/logs:/opt/airflow/logs
             - ../../airflow/plugins:/opt/airflow/plugins
             - ../../extract:/opt/extract
-            - ../../streaming:/opt/streaming
+            - ../../egx_streaming_pipeline:/opt/streaming
             - ../../infrastructure:/opt/infrastructure
             - /var/run/docker.sock:/var/run/docker.sock
             - ../../scripts:/opt/airflow/scripts
+            - ../../egx_dw:/opt/airflow/egx_dw
         networks:
             - de-network
         command: bash -c "exec airflow scheduler"
